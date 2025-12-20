@@ -19,89 +19,87 @@ export function playMonch() {
     ctx.resume()
   }
 
-  // Create noise buffer for the crunch texture
-  const noiseLength = 0.15
-  const bufferSize = ctx.sampleRate * noiseLength
-  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
-  const noiseData = noiseBuffer.getChannelData(0)
-
-  // Fill with noise
-  for (let i = 0; i < bufferSize; i++) {
-    noiseData[i] = Math.random() * 2 - 1
-  }
-
-  // Noise source
-  const noise = ctx.createBufferSource()
-  noise.buffer = noiseBuffer
-
-  // Low-pass filter for the "damp" wet quality
-  const dampFilter = ctx.createBiquadFilter()
-  dampFilter.type = 'lowpass'
-  dampFilter.frequency.setValueAtTime(800, now)
-  dampFilter.frequency.exponentialRampToValueAtTime(300, now + 0.08)
-  dampFilter.Q.value = 2
-
-  // Bandpass for crunch character
-  const crunchFilter = ctx.createBiquadFilter()
-  crunchFilter.type = 'bandpass'
-  crunchFilter.frequency.value = 400
-  crunchFilter.Q.value = 1.5
-
-  // Envelope for the noise burst
-  const noiseGain = ctx.createGain()
-  noiseGain.gain.setValueAtTime(0, now)
-  noiseGain.gain.linearRampToValueAtTime(0.4, now + 0.01) // Quick attack
-  noiseGain.gain.exponentialRampToValueAtTime(0.15, now + 0.04) // Initial drop
-  noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12) // Tail off
-
-  // Low thump for the bite impact
-  const thump = ctx.createOscillator()
-  thump.type = 'sine'
-  thump.frequency.setValueAtTime(120, now)
-  thump.frequency.exponentialRampToValueAtTime(50, now + 0.06)
-
-  const thumpGain = ctx.createGain()
-  thumpGain.gain.setValueAtTime(0, now)
-  thumpGain.gain.linearRampToValueAtTime(0.3, now + 0.005)
-  thumpGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08)
-
-  // Secondary squelch - adds wetness
-  const squelch = ctx.createOscillator()
-  squelch.type = 'triangle'
-  squelch.frequency.setValueAtTime(200, now)
-  squelch.frequency.exponentialRampToValueAtTime(80, now + 0.05)
-
-  const squelchGain = ctx.createGain()
-  squelchGain.gain.setValueAtTime(0, now + 0.01)
-  squelchGain.gain.linearRampToValueAtTime(0.15, now + 0.02)
-  squelchGain.gain.exponentialRampToValueAtTime(0.01, now + 0.07)
-
-  // Master output with slight compression feel
+  // Master output - keep it gentle
   const master = ctx.createGain()
-  master.gain.value = 0.6
-
-  // Connect noise chain
-  noise.connect(dampFilter)
-  dampFilter.connect(crunchFilter)
-  crunchFilter.connect(noiseGain)
-  noiseGain.connect(master)
-
-  // Connect thump
-  thump.connect(thumpGain)
-  thumpGain.connect(master)
-
-  // Connect squelch
-  squelch.connect(squelchGain)
-  squelchGain.connect(master)
-
-  // Output
+  master.gain.value = 0.25
   master.connect(ctx.destination)
 
-  // Play
-  noise.start(now)
-  noise.stop(now + noiseLength)
-  thump.start(now)
-  thump.stop(now + 0.1)
-  squelch.start(now)
-  squelch.stop(now + 0.08)
+  // High-pass to remove speaker-popping low frequencies
+  const highPass = ctx.createBiquadFilter()
+  highPass.type = 'highpass'
+  highPass.frequency.value = 150
+  highPass.connect(master)
+
+  // Create multiple small crunch "grains" for texture
+  const grainCount = 5
+  for (let i = 0; i < grainCount; i++) {
+    const delay = i * 0.018 + Math.random() * 0.01
+    const grainTime = now + delay
+
+    // Each grain is a short filtered noise burst
+    const grainLength = 0.04 + Math.random() * 0.03
+    const bufferSize = Math.floor(ctx.sampleRate * grainLength)
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const noiseData = noiseBuffer.getChannelData(0)
+
+    // Softer noise - not full amplitude
+    for (let j = 0; j < bufferSize; j++) {
+      noiseData[j] = (Math.random() * 2 - 1) * 0.7
+    }
+
+    const grain = ctx.createBufferSource()
+    grain.buffer = noiseBuffer
+
+    // Bandpass for crunch character - varied per grain
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = 300 + Math.random() * 400
+    filter.Q.value = 2 + Math.random() * 2
+
+    // Gentle envelope - no sharp attacks
+    const env = ctx.createGain()
+    const peakGain = 0.3 + Math.random() * 0.2
+    env.gain.setValueAtTime(0, grainTime)
+    env.gain.linearRampToValueAtTime(peakGain, grainTime + 0.008) // Soft attack
+    env.gain.linearRampToValueAtTime(peakGain * 0.6, grainTime + 0.02)
+    env.gain.linearRampToValueAtTime(0, grainTime + grainLength) // Soft release
+
+    grain.connect(filter)
+    filter.connect(env)
+    env.connect(highPass)
+
+    grain.start(grainTime)
+    grain.stop(grainTime + grainLength)
+  }
+
+  // Soft muffled "body" of the bite - no harsh transients
+  const bodyLength = 0.12
+  const bodyBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * bodyLength), ctx.sampleRate)
+  const bodyData = bodyBuffer.getChannelData(0)
+  for (let i = 0; i < bodyData.length; i++) {
+    bodyData[i] = (Math.random() * 2 - 1) * 0.5
+  }
+
+  const body = ctx.createBufferSource()
+  body.buffer = bodyBuffer
+
+  // Heavy lowpass for muffled wet sound
+  const wetFilter = ctx.createBiquadFilter()
+  wetFilter.type = 'lowpass'
+  wetFilter.frequency.setValueAtTime(600, now)
+  wetFilter.frequency.linearRampToValueAtTime(200, now + 0.1)
+  wetFilter.Q.value = 1
+
+  const bodyEnv = ctx.createGain()
+  bodyEnv.gain.setValueAtTime(0, now)
+  bodyEnv.gain.linearRampToValueAtTime(0.25, now + 0.02) // Gentle attack
+  bodyEnv.gain.linearRampToValueAtTime(0.15, now + 0.05)
+  bodyEnv.gain.linearRampToValueAtTime(0, now + bodyLength)
+
+  body.connect(wetFilter)
+  wetFilter.connect(bodyEnv)
+  bodyEnv.connect(highPass)
+
+  body.start(now)
+  body.stop(now + bodyLength)
 }
