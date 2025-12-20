@@ -1,12 +1,34 @@
 // Web Audio API sound synthesis for dougk
 
 let audioContext = null
+let unlocked = false
 
 function getContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)()
   }
   return audioContext
+}
+
+// Must be called on first user interaction to enable audio on mobile
+export function unlockAudio() {
+  if (unlocked) return
+
+  const ctx = getContext()
+
+  // Resume if suspended
+  if (ctx.state === 'suspended') {
+    ctx.resume()
+  }
+
+  // Play a silent buffer to fully unlock on iOS/mobile
+  const silentBuffer = ctx.createBuffer(1, 1, ctx.sampleRate)
+  const source = ctx.createBufferSource()
+  source.buffer = silentBuffer
+  source.connect(ctx.destination)
+  source.start(0)
+
+  unlocked = true
 }
 
 // Damp crunch sound - wet bread being chomped

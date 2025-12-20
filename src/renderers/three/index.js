@@ -7,6 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { createDoug } from './duck.js'
 import { createPond } from './pond.js'
 import { BreadManager } from './bread.js'
+import { unlockAudio } from './sounds.js'
 
 let scene, camera, renderer, composer, outlinePass
 let doug, pond, breadManager
@@ -102,7 +103,13 @@ export function start(container) {
   const raycaster = new THREE.Raycaster()
   const mouse = new THREE.Vector2()
 
+  // Unlock audio on first touch (for mobile)
+  renderer.domElement.addEventListener('touchstart', unlockAudio, { once: true })
+
   renderer.domElement.addEventListener('click', (event) => {
+    // Unlock audio on first interaction (required for mobile)
+    unlockAudio()
+
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
 
