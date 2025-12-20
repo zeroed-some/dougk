@@ -1,5 +1,6 @@
 // Doug the Duck - 3D low-poly model with Wind Waker cel-shading
 import * as THREE from 'three'
+import { playMonch } from './sounds.js'
 
 export function createDoug(scene, gradientMap) {
   const group = new THREE.Group()
@@ -342,6 +343,8 @@ export function createDoug(scene, gradientMap) {
               bread.eaten = true
               // Eating splash ripple
               pond.addRipple(state.position.x, state.position.z)
+              // Damp crunch sound
+              playMonch()
             }
           }
         }
