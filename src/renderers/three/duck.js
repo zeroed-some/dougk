@@ -59,18 +59,15 @@ export function createDoug(scene, gradientMap) {
   chest.position.set(0.25, 0.32, 0)
   group.add(chest)
 
-  // Scraggly feather tufts on body
+  // Subtle feather tufts on body (toned down)
   const tuftMaterial = bodyMaterial
   const featherPositions = [
-    { x: -0.4, y: 0.45, z: 0.15, rx: 0.3, rz: 0.5 },
-    { x: -0.45, y: 0.4, z: -0.12, rx: -0.2, rz: 0.4 },
-    { x: -0.3, y: 0.48, z: 0, rx: 0, rz: 0.3 },
-    { x: 0, y: 0.5, z: 0.25, rx: 0.4, rz: -0.2 },
-    { x: 0, y: 0.5, z: -0.25, rx: -0.4, rz: -0.2 },
+    { x: -0.38, y: 0.44, z: 0.1, rx: 0.2, rz: 0.3 },
+    { x: -0.38, y: 0.44, z: -0.1, rx: -0.2, rz: 0.3 },
   ]
 
   for (const f of featherPositions) {
-    const featherGeom = new THREE.ConeGeometry(0.06, 0.18, 4)
+    const featherGeom = new THREE.ConeGeometry(0.04, 0.12, 4)
     const feather = new THREE.Mesh(featherGeom, tuftMaterial)
     feather.position.set(f.x, f.y, f.z)
     feather.rotation.x = f.rx
@@ -78,18 +75,16 @@ export function createDoug(scene, gradientMap) {
     group.add(feather)
   }
 
-  // Tail feathers - more prominent and scraggly
+  // Tail feathers - subtle curl up
   const tailGroup = new THREE.Group()
   const tailFeathers = [
-    { x: -0.58, y: 0.38, z: 0, rx: 1.8, rz: 0, scale: 1.2 },
-    { x: -0.62, y: 0.42, z: 0.1, rx: 1.6, rz: 0.3, scale: 1.0 },
-    { x: -0.62, y: 0.42, z: -0.1, rx: 1.6, rz: -0.3, scale: 1.0 },
-    { x: -0.55, y: 0.48, z: 0.05, rx: 1.4, rz: 0.15, scale: 0.8 },
-    { x: -0.55, y: 0.48, z: -0.05, rx: 1.4, rz: -0.15, scale: 0.8 },
+    { x: -0.55, y: 0.36, z: 0, rx: 1.6, rz: 0, scale: 1.0 },
+    { x: -0.52, y: 0.40, z: 0.08, rx: 1.4, rz: 0.2, scale: 0.7 },
+    { x: -0.52, y: 0.40, z: -0.08, rx: 1.4, rz: -0.2, scale: 0.7 },
   ]
 
   for (const t of tailFeathers) {
-    const tailGeom = new THREE.ConeGeometry(0.05, 0.25, 4)
+    const tailGeom = new THREE.ConeGeometry(0.04, 0.18, 4)
     const tail = new THREE.Mesh(tailGeom, bodyMaterial)
     tail.position.set(t.x, t.y, t.z)
     tail.rotation.x = t.rx
@@ -148,26 +143,19 @@ export function createDoug(scene, gradientMap) {
   rightCheek.scale.set(0.8, 0.7, 0.6)
   group.add(rightCheek)
 
-  // Head tuft - messier, multiple feathers
-  const tuftGeom = new THREE.ConeGeometry(0.04, 0.14, 4)
+  // Head tuft - simple pair of feathers
+  const tuftGeom = new THREE.ConeGeometry(0.035, 0.12, 4)
   const tuft1 = new THREE.Mesh(tuftGeom, bodyMaterial)
-  tuft1.position.set(0.35, 0.95, 0)
-  tuft1.rotation.z = -0.4
+  tuft1.position.set(0.34, 0.93, 0.03)
+  tuft1.rotation.z = -0.3
+  tuft1.rotation.x = 0.2
   group.add(tuft1)
 
   const tuft2 = new THREE.Mesh(tuftGeom, bodyMaterial)
-  tuft2.position.set(0.32, 0.92, 0.06)
-  tuft2.rotation.z = -0.2
-  tuft2.rotation.x = 0.3
-  tuft2.scale.setScalar(0.8)
+  tuft2.position.set(0.34, 0.93, -0.03)
+  tuft2.rotation.z = -0.3
+  tuft2.rotation.x = -0.2
   group.add(tuft2)
-
-  const tuft3 = new THREE.Mesh(tuftGeom, bodyMaterial)
-  tuft3.position.set(0.32, 0.92, -0.06)
-  tuft3.rotation.z = -0.2
-  tuft3.rotation.x = -0.3
-  tuft3.scale.setScalar(0.7)
-  group.add(tuft3)
 
   // Beak - flatter, more duck-like
   const beakGeom = new THREE.ConeGeometry(0.09, 0.32, 6)
@@ -228,7 +216,9 @@ export function createDoug(scene, gradientMap) {
     idleTimer: 0,
     nextIdleMove: 3 + Math.random() * 4,
     wobble: 0,
-    headBob: 0
+    headBob: 0,
+    rippleTimer: 0,
+    isMoving: false
   }
 
   // Movement speeds
@@ -323,18 +313,35 @@ export function createDoug(scene, gradientMap) {
 
         // Wobble animation while moving
         state.wobble += delta * 8
+        state.isMoving = true
+
+        // Create swimming ripples
+        state.rippleTimer += delta
+        const rippleInterval = state.mode === 'swimming' ? 0.25 : 0.5
+        if (state.rippleTimer >= rippleInterval) {
+          state.rippleTimer = 0
+          // Ripple slightly behind the duck
+          const rippleX = state.position.x - Math.sin(state.rotation) * 0.3
+          const rippleZ = state.position.z - Math.cos(state.rotation) * 0.3
+          pond.addRipple(rippleX, rippleZ)
+        }
+      } else {
+        state.isMoving = false
       }
     } else {
+      state.isMoving = false
       // Arrived
       if (state.mode === 'swimming') {
         state.mode = 'idle'
-        // Eat nearby bread
+        // Eat nearby bread - create splash ripple!
         for (const bread of breadBits) {
           if (!bread.eaten) {
             const bx = bread.position.x - state.position.x
             const bz = bread.position.z - state.position.z
             if (Math.sqrt(bx * bx + bz * bz) < 0.4) {
               bread.eaten = true
+              // Eating splash ripple
+              pond.addRipple(state.position.x, state.position.z)
             }
           }
         }
@@ -356,7 +363,17 @@ export function createDoug(scene, gradientMap) {
     group.position.z = state.position.z
 
     // Bobbing on water
-    group.position.y = Math.sin(elapsed * 2) * 0.03
+    const bobAmount = Math.sin(elapsed * 2)
+    group.position.y = bobAmount * 0.03
+
+    // Occasional idle bob ripples (when bobbing down)
+    if (!state.isMoving && bobAmount < -0.9 && state.rippleTimer > 1.5) {
+      state.rippleTimer = 0
+      pond.addRipple(state.position.x, state.position.z)
+    }
+    if (!state.isMoving) {
+      state.rippleTimer += delta
+    }
 
     // Rotation (face direction of movement)
     // Duck model faces +X locally, so offset by -PI/2 to align with movement

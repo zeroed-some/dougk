@@ -49,37 +49,77 @@ export function createPond(scene, gradientMap) {
   sand.position.y = -0.02
   group.add(sand)
 
-  // Water surface
-  const waterGeom = new THREE.CircleGeometry(radius, 32)
+  // Water surface - higher resolution for wave animation
+  const waterGeom = new THREE.CircleGeometry(radius, 48, 8)
   waterGeom.rotateX(-Math.PI / 2)
   const water = new THREE.Mesh(waterGeom, waterMaterial)
   water.position.y = 0
   group.add(water)
 
-  // Water depth visual (darker center)
-  const deepGeom = new THREE.CircleGeometry(radius * 0.6, 24)
+  // Store original water vertex positions for wave animation
+  const waterPositions = waterGeom.attributes.position.array.slice()
+
+  // Water depth visual (darker center with gradient)
+  const deepGeom = new THREE.CircleGeometry(radius * 0.7, 32)
   deepGeom.rotateX(-Math.PI / 2)
   const deepMaterial = new THREE.MeshToonMaterial({
     color: waterDeep,
     gradientMap: gradientMap,
     transparent: true,
-    opacity: 0.5
+    opacity: 0.6
   })
   const deep = new THREE.Mesh(deepGeom, deepMaterial)
-  deep.position.y = -0.01
+  deep.position.y = -0.02
   group.add(deep)
 
-  // Water highlight (light reflection)
-  const highlightGeom = new THREE.CircleGeometry(radius * 0.3, 16)
+  // Secondary highlight shimmer
+  const shimmerGeom = new THREE.CircleGeometry(radius * 0.5, 24)
+  shimmerGeom.rotateX(-Math.PI / 2)
+  const shimmerMaterial = new THREE.MeshBasicMaterial({
+    color: 0x6bc4d8,
+    transparent: true,
+    opacity: 0.25
+  })
+  const shimmer = new THREE.Mesh(shimmerGeom, shimmerMaterial)
+  shimmer.position.set(radius * 0.15, 0.01, radius * 0.15)
+  group.add(shimmer)
+
+  // Main highlight (sun reflection)
+  const highlightGeom = new THREE.CircleGeometry(radius * 0.25, 16)
   highlightGeom.rotateX(-Math.PI / 2)
   const highlightMaterial = new THREE.MeshBasicMaterial({
-    color: 0x88d4e8,
+    color: 0xa8e8f8,
     transparent: true,
-    opacity: 0.4
+    opacity: 0.5
   })
   const highlight = new THREE.Mesh(highlightGeom, highlightMaterial)
   highlight.position.set(-radius * 0.35, 0.02, -radius * 0.35)
   group.add(highlight)
+
+  // Small sparkle highlights
+  const sparkles = []
+  const sparkleMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.7
+  })
+  for (let i = 0; i < 6; i++) {
+    const sparkleGeom = new THREE.CircleGeometry(0.08 + Math.random() * 0.06, 6)
+    sparkleGeom.rotateX(-Math.PI / 2)
+    const sparkle = new THREE.Mesh(sparkleGeom, sparkleMaterial.clone())
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.random() * radius * 0.8
+    sparkle.position.set(
+      Math.cos(angle) * dist,
+      0.03,
+      Math.sin(angle) * dist
+    )
+    sparkle.userData.baseX = sparkle.position.x
+    sparkle.userData.baseZ = sparkle.position.z
+    sparkle.userData.phase = Math.random() * Math.PI * 2
+    group.add(sparkle)
+    sparkles.push(sparkle)
+  }
 
   // Grass tufts around the pond
   const grassTuftGeom = new THREE.ConeGeometry(0.15, 0.3, 4)
@@ -396,9 +436,39 @@ export function createPond(scene, gradientMap) {
   let smokeSpawnTimer = 0
 
   function update(delta, elapsed) {
+    // Animate water surface waves
+    const positions = waterGeom.attributes.position.array
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = waterPositions[i]
+      const z = waterPositions[i + 2]
+      const dist = Math.sqrt(x * x + z * z)
+
+      // Gentle concentric waves from center
+      const wave1 = Math.sin(dist * 1.5 - elapsed * 2) * 0.03
+      // Cross-wave pattern
+      const wave2 = Math.sin(x * 0.8 + elapsed * 1.5) * Math.cos(z * 0.8 + elapsed * 1.2) * 0.02
+
+      positions[i + 1] = waterPositions[i + 1] + wave1 + wave2
+    }
+    waterGeom.attributes.position.needsUpdate = true
+
     // Animate water highlight
-    highlight.position.x = -radius * 0.35 + Math.sin(elapsed * 0.5) * 0.2
-    highlight.position.z = -radius * 0.35 + Math.cos(elapsed * 0.5) * 0.2
+    highlight.position.x = -radius * 0.35 + Math.sin(elapsed * 0.5) * 0.3
+    highlight.position.z = -radius * 0.35 + Math.cos(elapsed * 0.5) * 0.3
+    highlight.material.opacity = 0.4 + Math.sin(elapsed * 2) * 0.1
+
+    // Animate shimmer
+    shimmer.position.x = radius * 0.15 + Math.cos(elapsed * 0.4) * 0.2
+    shimmer.position.z = radius * 0.15 + Math.sin(elapsed * 0.3) * 0.2
+    shimmer.material.opacity = 0.2 + Math.sin(elapsed * 1.5 + 1) * 0.1
+
+    // Animate sparkles - twinkle effect
+    for (const sparkle of sparkles) {
+      const twinkle = Math.sin(elapsed * 4 + sparkle.userData.phase)
+      sparkle.material.opacity = twinkle > 0.3 ? 0.8 : 0
+      sparkle.position.x = sparkle.userData.baseX + Math.sin(elapsed * 0.5 + sparkle.userData.phase) * 0.1
+      sparkle.position.z = sparkle.userData.baseZ + Math.cos(elapsed * 0.5 + sparkle.userData.phase) * 0.1
+    }
 
     // Update ripples
     for (let i = ripples.length - 1; i >= 0; i--) {
