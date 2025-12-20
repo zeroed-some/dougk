@@ -58,13 +58,15 @@ export function createDonny(scene, gradientMap) {
   head.position.set(1.0, 0.25, 0)
   group.add(head)
 
-  // The magnificent tusk!
-  const tuskGeom = new THREE.ConeGeometry(0.06, 1.8, 6)
+  // The magnificent tusk! - positioned so base touches front of head
+  const tuskGeom = new THREE.ConeGeometry(0.05, 1.4, 6)
+  // Shift geometry so base is at origin, tip extends in +Y
+  tuskGeom.translate(0, 0.7, 0)
   const tusk = new THREE.Mesh(tuskGeom, tuskMaterial)
-  tusk.position.set(1.6, 0.35, 0)
-  tusk.rotation.z = -Math.PI / 2 + 0.15 // Pointing forward, slightly up
-  // Add spiral ridges (simplified with rotation)
-  tusk.rotation.y = 0.3
+  // Position at front of head
+  tusk.position.set(1.35, 0.4, 0)
+  // Rotate to point forward and slightly up
+  tusk.rotation.z = -Math.PI / 2 + 0.2
   group.add(tusk)
 
   // Eyes
