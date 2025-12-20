@@ -8,10 +8,11 @@ import { createDoug } from './duck.js'
 import { createPond } from './pond.js'
 import { BreadManager } from './bread.js'
 import { createDonny } from './narwhal.js'
+import { createKoiSchool } from './koi.js'
 import { unlockAudio } from './sounds.js'
 
 let scene, camera, renderer, composer, outlinePass
-let doug, pond, breadManager, donny
+let doug, pond, breadManager, donny, koiSchool
 let clock
 let animationId = null
 
@@ -91,6 +92,7 @@ export function start(container) {
   doug = createDoug(scene, toonGradient)
   breadManager = new BreadManager(scene, toonGradient)
   donny = createDonny(scene, toonGradient)
+  koiSchool = createKoiSchool(scene, toonGradient, pond.radius)
 
   // Post-processing
   composer = new EffectComposer(renderer)
@@ -106,7 +108,7 @@ export function start(container) {
   outlinePass.edgeThickness = 1.5
   outlinePass.visibleEdgeColor.set(0x191410)
   outlinePass.hiddenEdgeColor.set(0x191410)
-  outlinePass.selectedObjects = [doug.group, pond.group, donny.group]
+  outlinePass.selectedObjects = [doug.group, pond.group, donny.group, koiSchool.group]
   composer.addPass(outlinePass)
   composer.addPass(new OutputPass())
 
@@ -131,6 +133,7 @@ export function start(container) {
       const point = intersects[0].point
       breadManager.spawnBread(point.x, point.z)
       pond.addRipple(point.x, point.z)
+      koiSchool.triggerPanic(point.x, point.z)
       outlinePass.selectedObjects = [doug.group, pond.group, ...breadManager.getMeshes()]
     }
   })
@@ -165,6 +168,7 @@ function animate() {
   breadManager.update(delta, elapsed)
   pond.update(delta, elapsed)
   donny.update(delta, elapsed, pond, doug)
+  koiSchool.update(delta, elapsed)
 
   composer.render()
 }
@@ -193,6 +197,7 @@ export function stop() {
   doug = null
   pond = null
   donny = null
+  koiSchool = null
   breadManager = null
 }
 
