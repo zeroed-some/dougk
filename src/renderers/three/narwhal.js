@@ -188,8 +188,25 @@ export function createDonny(scene, gradientMap) {
     group.rotation.y = angle + Math.PI / 2 // Face outward-ish
   }
 
-  function update(delta, elapsed, pond) {
+  // Helper to smoothly interpolate angles
+  function lerpAngle(from, to, t) {
+    let diff = to - from
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    return from + diff * t
+  }
+
+  function update(delta, elapsed, pond, doug) {
     state.timer += delta
+
+    // Calculate angle to face Doug
+    let angleToDoug = 0
+    if (doug) {
+      const dougPos = doug.getPosition()
+      const dx = dougPos.x - group.position.x
+      const dz = dougPos.z - group.position.z
+      angleToDoug = Math.atan2(dx, dz)
+    }
 
     switch (state.mode) {
       case 'waiting':
@@ -211,6 +228,8 @@ export function createDonny(scene, gradientMap) {
           state.timer = 0
           group.visible = true
           group.position.y = -2
+          // Start facing Doug
+          group.rotation.y = angleToDoug
         }
         break
 
@@ -219,6 +238,12 @@ export function createDonny(scene, gradientMap) {
         const emergeProgress = Math.min(state.timer / 1.5, 1)
         const easeOut = 1 - Math.pow(1 - emergeProgress, 3)
         group.position.y = -2 + easeOut * 2.3 // Rise to 0.3 above water
+
+        // Tilt upward as emerging (nose up!)
+        group.rotation.x = -0.3 * easeOut
+
+        // Slowly turn toward Doug - lugubrious, not laser tracking
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.3)
 
         // Gentle rocking as emerging
         group.rotation.z = Math.sin(state.timer * 4) * 0.1
@@ -234,6 +259,10 @@ export function createDonny(scene, gradientMap) {
         // Bob gently on the surface
         group.position.y = 0.3 + Math.sin(elapsed * 2) * 0.08
         group.rotation.z = Math.sin(elapsed * 1.5) * 0.05
+
+        // Keep tilted upward, slowly drifting gaze toward Doug
+        group.rotation.x = -0.25 + Math.sin(elapsed * 1.5) * 0.05
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.2)
 
         // Gentle flipper animation
         leftFlipper.rotation.z = 2.2 + Math.sin(elapsed * 3) * 0.15
@@ -259,6 +288,9 @@ export function createDonny(scene, gradientMap) {
         const easeIn = Math.pow(submergeProgress, 2)
         group.position.y = 0.3 - easeIn * 2.5
 
+        // Tilt nose down as submerging
+        group.rotation.x = -0.25 + easeIn * 0.4
+
         // Add bubbles/ripples as submerging
         if (Math.random() < delta * 4) {
           pond.addRipple(
@@ -272,6 +304,7 @@ export function createDonny(scene, gradientMap) {
           state.timer = 0
           group.visible = false
           group.position.y = -3
+          group.rotation.x = 0
         }
         break
     }

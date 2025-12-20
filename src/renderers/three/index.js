@@ -164,7 +164,7 @@ function animate() {
   doug.update(delta, elapsed, breadManager.getActiveBits(), pond)
   breadManager.update(delta, elapsed)
   pond.update(delta, elapsed)
-  donny.update(delta, elapsed, pond)
+  donny.update(delta, elapsed, pond, doug)
 
   composer.render()
 }
