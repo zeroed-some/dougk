@@ -140,6 +140,7 @@ export function createDoug(scene, gradientMap) {
     position: new THREE.Vector3(0, 0, 0),
     targetPosition: new THREE.Vector3(0, 0, 0),
     rotation: 0,
+    targetRotation: 0,
     mode: 'idle', // 'idle', 'waiting', 'swimming'
     waitTimer: 0,
     waitDuration: 0,
@@ -152,6 +153,16 @@ export function createDoug(scene, gradientMap) {
   // Movement speeds
   const idleSpeed = 0.5
   const swimSpeed = 1.2
+  const turnSpeed = 4 // radians per second
+
+  // Helper to lerp angles properly (handles wraparound)
+  function lerpAngle(from, to, t) {
+    let diff = to - from
+    // Normalize to -PI to PI
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    return from + diff * t
+  }
 
   function pickIdleTarget(pond) {
     const angle = Math.random() * Math.PI * 2
@@ -206,19 +217,32 @@ export function createDoug(scene, gradientMap) {
     const dist = Math.sqrt(dx * dx + dz * dz)
 
     if (dist > 0.1) {
-      const speed = state.mode === 'swimming' ? swimSpeed : idleSpeed
-      const moveAmount = Math.min(speed * delta, dist)
-      const moveX = (dx / dist) * moveAmount
-      const moveZ = (dz / dist) * moveAmount
+      // Calculate desired rotation to face target
+      state.targetRotation = Math.atan2(dx, dz)
 
-      state.position.x += moveX
-      state.position.z += moveZ
+      // Smoothly turn toward target direction
+      state.rotation = lerpAngle(state.rotation, state.targetRotation, turnSpeed * delta)
 
-      // Face movement direction
-      state.rotation = Math.atan2(dz, dx)
+      // Check if we're facing roughly the right direction (within ~30 degrees)
+      let angleDiff = Math.abs(state.targetRotation - state.rotation)
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2
+      angleDiff = Math.abs(angleDiff)
 
-      // Wobble animation while moving
-      state.wobble += delta * 8
+      // Only move forward if facing the right way
+      if (angleDiff < 0.5) {
+        const speed = state.mode === 'swimming' ? swimSpeed : idleSpeed
+        const moveAmount = Math.min(speed * delta, dist)
+
+        // Move in the direction Doug is FACING (not toward target directly)
+        const moveX = Math.sin(state.rotation) * moveAmount
+        const moveZ = Math.cos(state.rotation) * moveAmount
+
+        state.position.x += moveX
+        state.position.z += moveZ
+
+        // Wobble animation while moving
+        state.wobble += delta * 8
+      }
     } else {
       // Arrived
       if (state.mode === 'swimming') {
@@ -254,7 +278,7 @@ export function createDoug(scene, gradientMap) {
     group.position.y = Math.sin(elapsed * 2) * 0.03
 
     // Rotation (face direction of movement)
-    group.rotation.y = -state.rotation + Math.PI / 2
+    group.rotation.y = state.rotation
 
     // Body wobble while swimming
     const wobbleAmount = Math.sin(state.wobble) * 0.08
