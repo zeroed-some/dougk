@@ -7,10 +7,11 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { createDoug } from './duck.js'
 import { createPond } from './pond.js'
 import { BreadManager } from './bread.js'
+import { createDonny } from './narwhal.js'
 import { unlockAudio } from './sounds.js'
 
 let scene, camera, renderer, composer, outlinePass
-let doug, pond, breadManager
+let doug, pond, breadManager, donny
 let clock
 let animationId = null
 
@@ -89,6 +90,7 @@ export function start(container) {
   pond = createPond(scene, toonGradient)
   doug = createDoug(scene, toonGradient)
   breadManager = new BreadManager(scene, toonGradient)
+  donny = createDonny(scene, toonGradient)
 
   // Post-processing
   composer = new EffectComposer(renderer)
@@ -104,7 +106,7 @@ export function start(container) {
   outlinePass.edgeThickness = 1.5
   outlinePass.visibleEdgeColor.set(0x191410)
   outlinePass.hiddenEdgeColor.set(0x191410)
-  outlinePass.selectedObjects = [doug.group, pond.group]
+  outlinePass.selectedObjects = [doug.group, pond.group, donny.group]
   composer.addPass(outlinePass)
   composer.addPass(new OutputPass())
 
@@ -162,6 +164,7 @@ function animate() {
   doug.update(delta, elapsed, breadManager.getActiveBits(), pond)
   breadManager.update(delta, elapsed)
   pond.update(delta, elapsed)
+  donny.update(delta, elapsed, pond)
 
   composer.render()
 }
@@ -189,6 +192,7 @@ export function stop() {
   composer = null
   doug = null
   pond = null
+  donny = null
   breadManager = null
 }
 
