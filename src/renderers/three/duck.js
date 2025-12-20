@@ -278,7 +278,8 @@ export function createDoug(scene, gradientMap) {
     group.position.y = Math.sin(elapsed * 2) * 0.03
 
     // Rotation (face direction of movement)
-    group.rotation.y = state.rotation
+    // Duck model faces +X locally, so offset by -PI/2 to align with movement
+    group.rotation.y = state.rotation - Math.PI / 2
 
     // Body wobble while swimming
     const wobbleAmount = Math.sin(state.wobble) * 0.08
