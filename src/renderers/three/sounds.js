@@ -13,33 +13,50 @@ function getContext() {
 // Must be called on first user interaction to enable audio on mobile
 export function unlockAudio() {
   if (unlocked) return
+  unlocked = true // Set immediately to prevent multiple attempts
 
-  const ctx = getContext()
+  // Create context fresh during user gesture (mobile requirement)
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)()
+  }
 
-  // Resume if suspended
+  const ctx = audioContext
+
+  // Resume synchronously - don't wait for promise
   if (ctx.state === 'suspended') {
     ctx.resume()
   }
 
-  // Play a silent buffer to fully unlock on iOS/mobile
-  const silentBuffer = ctx.createBuffer(1, 1, ctx.sampleRate)
-  const source = ctx.createBufferSource()
-  source.buffer = silentBuffer
-  source.connect(ctx.destination)
-  source.start(0)
+  // Immediately play a sound to force audio pipeline open
+  // Must happen synchronously in the user gesture
+  try {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
 
-  unlocked = true
+    osc.type = 'triangle'
+    osc.frequency.value = 200
+    gain.gain.value = 0.001 // Nearly silent
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.start(0)
+    osc.stop(ctx.currentTime + 0.1)
+  } catch (e) {
+    console.warn('Unlock sound failed:', e)
+  }
 }
 
 // Damp crunch sound - wet bread being chomped
 export function playMonch() {
   const ctx = getContext()
-  const now = ctx.currentTime
 
-  // Resume context if suspended (browser autoplay policy)
+  // Try to resume if needed, but don't block
   if (ctx.state === 'suspended') {
     ctx.resume()
   }
+
+  const now = ctx.currentTime
 
   // Master output - keep it gentle
   const master = ctx.createGain()

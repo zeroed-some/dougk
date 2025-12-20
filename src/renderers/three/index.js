@@ -38,6 +38,15 @@ function createToonGradient() {
 export function start(container) {
   if (animationId) return
 
+  // Unlock audio on any user interaction (document level for mobile)
+  const unlockEvents = ['touchstart', 'touchend', 'pointerdown', 'click', 'keydown']
+  const unlockHandler = () => {
+    unlockAudio()
+    // Remove all listeners after first unlock
+    unlockEvents.forEach(e => document.removeEventListener(e, unlockHandler))
+  }
+  unlockEvents.forEach(e => document.addEventListener(e, unlockHandler, { passive: true }))
+
   // Scene
   scene = new THREE.Scene()
   scene.background = new THREE.Color(0x55a04b)
