@@ -240,14 +240,14 @@ export function createDonny(scene, gradientMap) {
         const easeOut = 1 - Math.pow(1 - emergeProgress, 3)
         group.position.y = -2 + easeOut * 2.5 // Rise higher out of water
 
-        // Tilt nose UP ~55 degrees (0.96 radians)
-        group.rotation.x = 0.95 * easeOut
-
         // Slowly turn toward Doug - lugubrious, not laser tracking
         group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.5)
 
-        // Gentle rocking as emerging
-        group.rotation.z = Math.sin(state.timer * 4) * 0.08
+        // Tilt nose UP ~55 degrees - rotate around Z since model faces +X
+        group.rotation.z = 0.95 * easeOut
+
+        // Gentle side-to-side rocking
+        group.rotation.x = Math.sin(state.timer * 4) * 0.06
 
         if (emergeProgress >= 1) {
           state.mode = 'surfaced'
@@ -259,11 +259,15 @@ export function createDonny(scene, gradientMap) {
       case 'surfaced':
         // Bob gently, positioned higher
         group.position.y = 0.5 + Math.sin(elapsed * 2) * 0.06
-        group.rotation.z = Math.sin(elapsed * 1.5) * 0.04
+
+        // Slowly turn toward Doug
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.3)
 
         // Keep steep tilt ~55 degrees - nose up, tail in water
-        group.rotation.x = 0.95 + Math.sin(elapsed * 1.5) * 0.05
-        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.3)
+        group.rotation.z = 0.95 + Math.sin(elapsed * 1.5) * 0.04
+
+        // Gentle side-to-side rocking
+        group.rotation.x = Math.sin(elapsed * 1.5) * 0.03
 
         // Gentle flipper animation
         leftFlipper.rotation.z = 2.2 + Math.sin(elapsed * 3) * 0.15
@@ -290,7 +294,7 @@ export function createDonny(scene, gradientMap) {
         group.position.y = 0.5 - easeIn * 2.7
 
         // Tilt nose down as diving back under
-        group.rotation.x = 0.95 - easeIn * 1.2
+        group.rotation.z = 0.95 - easeIn * 1.2
 
         // Add bubbles/ripples as submerging
         if (Math.random() < delta * 4) {
@@ -306,6 +310,7 @@ export function createDonny(scene, gradientMap) {
           group.visible = false
           group.position.y = -3
           group.rotation.x = 0
+          group.rotation.z = 0
         }
         break
     }

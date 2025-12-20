@@ -140,17 +140,17 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
         koi.group.position.z - z
       )
 
-      if (dist < 2) {
+      if (dist < 1.5) {
         koi.state.panicMode = true
-        koi.state.panicTimer = 1.5 + Math.random() * 1
-        koi.state.speed = 4 + Math.random() * 2
+        koi.state.panicTimer = 0.8 + Math.random() * 0.6 // Shorter panic
+        koi.state.speed = koi.state.baseSpeed * 2 // Just double speed, not crazy fast
 
-        // Flee away from the bread
+        // Flee away from the bread - but keep it smooth
         const fleeAngle = Math.atan2(
           koi.group.position.z - z,
           koi.group.position.x - x
         )
-        const fleeDist = pondRadius * 0.6 + Math.random() * pondRadius * 0.2
+        const fleeDist = pondRadius * 0.5 + Math.random() * pondRadius * 0.3
         koi.state.targetX = Math.cos(fleeAngle) * fleeDist
         koi.state.targetZ = Math.sin(fleeAngle) * fleeDist
 
@@ -184,9 +184,9 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
           s.isIdle = false
           pickNewTarget(koi, pondRadius)
         }
-        // Gentle drifting while idle
-        koi.tail.rotation.y = Math.sin(elapsed * 4 + s.flickerPhase) * 0.2
-        koi.group.position.y = -0.1 + Math.sin(elapsed * 3 + s.flickerPhase) * 0.01
+        // Gentle drifting while idle - still wiggle tail slowly
+        koi.tail.rotation.y = Math.sin(elapsed * 3 + s.flickerPhase) * 0.15
+        koi.group.position.y = -0.1 + Math.sin(elapsed * 2 + s.flickerPhase) * 0.008
         continue
       }
 
@@ -194,85 +194,77 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
       s.wanderTimer -= delta
       if (s.wanderTimer <= 0 && !s.panicMode) {
         // Random chance to go idle
-        if (Math.random() < 0.15) {
+        if (Math.random() < 0.2) {
           s.isIdle = true
-          s.idleTimer = 1 + Math.random() * 3
+          s.idleTimer = 2 + Math.random() * 4
           s.wanderTimer = 0.5
           continue
         }
 
-        // Sometimes follow another koi (if sociable)
+        // Sometimes follow another koi loosely (if sociable)
         if (Math.random() < s.sociability && kois.length > 1) {
           const otherKoi = kois[Math.floor(Math.random() * kois.length)]
           if (otherKoi !== koi) {
-            // Head toward where they're going, with some offset
-            s.targetX = otherKoi.state.targetX + (Math.random() - 0.5) * 1.5
-            s.targetZ = otherKoi.state.targetZ + (Math.random() - 0.5) * 1.5
+            // Head toward where they are, with some offset
+            s.targetX = otherKoi.group.position.x + (Math.random() - 0.5) * 2
+            s.targetZ = otherKoi.group.position.z + (Math.random() - 0.5) * 2
           }
         } else {
           pickNewTarget(koi, pondRadius)
         }
 
-        // Restless koi change direction more often
-        s.wanderTimer = (1 + Math.random() * 3) / s.restlessness
+        // Longer wander intervals for more natural movement
+        s.wanderTimer = 2 + Math.random() * 4
       }
 
-      // Move toward target
+      // Move toward target - smooth, natural swimming
       const dx = s.targetX - koi.group.position.x
       const dz = s.targetZ - koi.group.position.z
       const dist = Math.hypot(dx, dz)
 
-      if (dist > 0.15) {
-        // Calculate target rotation
-        const targetRot = Math.atan2(dx, dz)
+      // Always swim forward, turn gradually
+      const targetRot = Math.atan2(dx, dz)
 
-        // Smooth rotation - varies by individual
-        let rotDiff = targetRot - koi.group.rotation.y
-        while (rotDiff > Math.PI) rotDiff -= Math.PI * 2
-        while (rotDiff < -Math.PI) rotDiff += Math.PI * 2
-        koi.group.rotation.y += rotDiff * s.turnSpeed * delta
+      // Very smooth rotation - fish don't turn sharply
+      let rotDiff = targetRot - koi.group.rotation.y
+      while (rotDiff > Math.PI) rotDiff -= Math.PI * 2
+      while (rotDiff < -Math.PI) rotDiff += Math.PI * 2
 
-        // Move forward - speed varies
-        const moveSpeed = s.panicMode ? s.speed * 2.5 : s.speed * (0.4 + s.restlessness * 0.4)
-        const moveX = Math.sin(koi.group.rotation.y) * moveSpeed * delta
-        const moveZ = Math.cos(koi.group.rotation.y) * moveSpeed * delta
-        koi.group.position.x += moveX
-        koi.group.position.z += moveZ
+      // Slower turn rate for natural movement
+      const turnRate = s.panicMode ? 2.5 : 1.2
+      koi.group.rotation.y += rotDiff * turnRate * delta
 
-        // Tail wiggle - faster when moving fast
-        const wiggleSpeed = s.panicMode ? 25 : 8 + s.restlessness * 8
-        koi.tail.rotation.y = Math.sin(elapsed * wiggleSpeed + s.flickerPhase) * 0.5
-      } else {
-        // Reached target - maybe idle, maybe pick new target
-        if (Math.random() < 0.3) {
+      // Always moving forward (fish don't stop mid-water)
+      const moveSpeed = s.panicMode ? s.speed * 1.8 : s.speed * 0.5
+      const moveX = Math.sin(koi.group.rotation.y) * moveSpeed * delta
+      const moveZ = Math.cos(koi.group.rotation.y) * moveSpeed * delta
+      koi.group.position.x += moveX
+      koi.group.position.z += moveZ
+
+      // Tail wiggle - proportional to speed
+      const wiggleSpeed = s.panicMode ? 15 : 8
+      const wiggleAmount = s.panicMode ? 0.4 : 0.3
+      koi.tail.rotation.y = Math.sin(elapsed * wiggleSpeed + s.flickerPhase) * wiggleAmount
+
+      // Reached close to target - pick new one
+      if (dist < 0.3) {
+        if (Math.random() < 0.25) {
           s.isIdle = true
-          s.idleTimer = 0.5 + Math.random() * 2
+          s.idleTimer = 1 + Math.random() * 3
         } else {
           pickNewTarget(koi, pondRadius)
         }
       }
 
-      // Flicker/shimmer effect - slight Y oscillation
-      koi.group.position.y = -0.08 + Math.sin(elapsed * 8 + s.flickerPhase) * 0.015
+      // Gentle depth variation - natural swimming motion
+      koi.group.position.y = -0.08 + Math.sin(elapsed * 3 + s.flickerPhase) * 0.01
 
-      // Erratic depth changes when panicked
-      if (s.panicMode) {
-        koi.group.position.y += Math.sin(elapsed * 20 + s.flickerPhase) * 0.03
-        // Random direction jitters
-        if (Math.random() < delta * 5) {
-          koi.group.rotation.y += (Math.random() - 0.5) * 0.8
-          pickNewTarget(koi, pondRadius)
-        }
-      }
-
-      // Keep in pond bounds
+      // Keep in pond bounds - smooth turnaround
       const currentDist = Math.hypot(koi.group.position.x, koi.group.position.z)
-      if (currentDist > pondRadius * 0.9) {
-        const scale = (pondRadius * 0.85) / currentDist
-        koi.group.position.x *= scale
-        koi.group.position.z *= scale
-        // Turn back toward center
-        pickNewTarget(koi, pondRadius * 0.5)
+      if (currentDist > pondRadius * 0.85) {
+        // Steer back toward center
+        s.targetX = (Math.random() - 0.5) * pondRadius * 0.5
+        s.targetZ = (Math.random() - 0.5) * pondRadius * 0.5
       }
     }
   }
