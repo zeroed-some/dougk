@@ -36,64 +36,145 @@ export function createDoug(scene, gradientMap) {
     color: eyePupil
   })
 
-  // Body - stretched sphere
-  const bodyGeom = new THREE.SphereGeometry(0.5, 16, 12)
-  bodyGeom.scale(1.2, 0.9, 1)
+  // Body - elongated pear shape using multiple parts
+  // Main body (more oval, less ball)
+  const bodyGeom = new THREE.SphereGeometry(0.42, 8, 6) // Lower poly for angular look
+  bodyGeom.scale(1.4, 0.75, 0.9)
   const body = new THREE.Mesh(bodyGeom, bodyMaterial)
-  body.position.y = 0.3
+  body.position.y = 0.28
+  body.rotation.z = 0.1 // Slight tilt forward
   group.add(body)
 
-  // Body highlight (chest area)
-  const chestGeom = new THREE.SphereGeometry(0.35, 12, 8)
-  chestGeom.scale(1, 0.8, 0.8)
+  // Rear bump (makes it pear-shaped)
+  const rearGeom = new THREE.SphereGeometry(0.28, 6, 5)
+  rearGeom.scale(1, 0.8, 0.9)
+  const rear = new THREE.Mesh(rearGeom, bodyMaterial)
+  rear.position.set(-0.35, 0.22, 0)
+  group.add(rear)
+
+  // Chest puff (front bump)
+  const chestGeom = new THREE.SphereGeometry(0.25, 6, 5)
+  chestGeom.scale(0.8, 0.9, 0.85)
   const chest = new THREE.Mesh(chestGeom, highlightMaterial)
-  chest.position.set(0.15, 0.35, 0.2)
+  chest.position.set(0.25, 0.32, 0)
   group.add(chest)
 
-  // Tail feathers
+  // Scraggly feather tufts on body
+  const tuftMaterial = bodyMaterial
+  const featherPositions = [
+    { x: -0.4, y: 0.45, z: 0.15, rx: 0.3, rz: 0.5 },
+    { x: -0.45, y: 0.4, z: -0.12, rx: -0.2, rz: 0.4 },
+    { x: -0.3, y: 0.48, z: 0, rx: 0, rz: 0.3 },
+    { x: 0, y: 0.5, z: 0.25, rx: 0.4, rz: -0.2 },
+    { x: 0, y: 0.5, z: -0.25, rx: -0.4, rz: -0.2 },
+  ]
+
+  for (const f of featherPositions) {
+    const featherGeom = new THREE.ConeGeometry(0.06, 0.18, 4)
+    const feather = new THREE.Mesh(featherGeom, tuftMaterial)
+    feather.position.set(f.x, f.y, f.z)
+    feather.rotation.x = f.rx
+    feather.rotation.z = f.rz
+    group.add(feather)
+  }
+
+  // Tail feathers - more prominent and scraggly
   const tailGroup = new THREE.Group()
-  for (let i = 0; i < 3; i++) {
-    const tailGeom = new THREE.ConeGeometry(0.08, 0.3, 6)
+  const tailFeathers = [
+    { x: -0.58, y: 0.38, z: 0, rx: 1.8, rz: 0, scale: 1.2 },
+    { x: -0.62, y: 0.42, z: 0.1, rx: 1.6, rz: 0.3, scale: 1.0 },
+    { x: -0.62, y: 0.42, z: -0.1, rx: 1.6, rz: -0.3, scale: 1.0 },
+    { x: -0.55, y: 0.48, z: 0.05, rx: 1.4, rz: 0.15, scale: 0.8 },
+    { x: -0.55, y: 0.48, z: -0.05, rx: 1.4, rz: -0.15, scale: 0.8 },
+  ]
+
+  for (const t of tailFeathers) {
+    const tailGeom = new THREE.ConeGeometry(0.05, 0.25, 4)
     const tail = new THREE.Mesh(tailGeom, bodyMaterial)
-    tail.rotation.x = Math.PI / 2 + (i - 1) * 0.15
-    tail.rotation.z = (i - 1) * 0.2
-    tail.position.set(-0.55 - i * 0.05, 0.35, (i - 1) * 0.08)
+    tail.position.set(t.x, t.y, t.z)
+    tail.rotation.x = t.rx
+    tail.rotation.z = t.rz
+    tail.scale.setScalar(t.scale)
     tailGroup.add(tail)
   }
   group.add(tailGroup)
 
-  // Wings
-  const wingGeom = new THREE.SphereGeometry(0.25, 8, 6)
-  wingGeom.scale(0.6, 1, 0.3)
+  // Wings - more angular, feather-like
+  const wingGeom = new THREE.ConeGeometry(0.18, 0.4, 4)
 
   const leftWing = new THREE.Mesh(wingGeom, bodyMaterial)
-  leftWing.position.set(-0.1, 0.35, 0.45)
-  leftWing.rotation.x = 0.2
+  leftWing.position.set(-0.1, 0.32, 0.38)
+  leftWing.rotation.x = 1.2
+  leftWing.rotation.z = 0.4
   group.add(leftWing)
 
   const rightWing = new THREE.Mesh(wingGeom, bodyMaterial)
-  rightWing.position.set(-0.1, 0.35, -0.45)
-  rightWing.rotation.x = -0.2
+  rightWing.position.set(-0.1, 0.32, -0.38)
+  rightWing.rotation.x = -1.2
+  rightWing.rotation.z = 0.4
   group.add(rightWing)
 
-  // Head
-  const headGeom = new THREE.SphereGeometry(0.32, 16, 12)
+  // Wing feather details
+  const wingFeatherGeom = new THREE.ConeGeometry(0.08, 0.22, 3)
+
+  const leftWingFeather = new THREE.Mesh(wingFeatherGeom, bodyMaterial)
+  leftWingFeather.position.set(-0.2, 0.28, 0.42)
+  leftWingFeather.rotation.x = 1.4
+  leftWingFeather.rotation.z = 0.6
+  group.add(leftWingFeather)
+
+  const rightWingFeather = new THREE.Mesh(wingFeatherGeom, bodyMaterial)
+  rightWingFeather.position.set(-0.2, 0.28, -0.42)
+  rightWingFeather.rotation.x = -1.4
+  rightWingFeather.rotation.z = 0.6
+  group.add(rightWingFeather)
+
+  // Head - slightly egg-shaped, not perfectly round
+  const headGeom = new THREE.SphereGeometry(0.28, 7, 6)
+  headGeom.scale(1.1, 1.0, 0.95)
   const head = new THREE.Mesh(headGeom, bodyMaterial)
-  head.position.set(0.45, 0.7, 0)
+  head.position.set(0.42, 0.68, 0)
   group.add(head)
 
-  // Head tuft (little feather on top)
-  const tuftGeom = new THREE.ConeGeometry(0.05, 0.15, 6)
-  const tuft = new THREE.Mesh(tuftGeom, bodyMaterial)
-  tuft.position.set(0.4, 1.0, 0)
-  tuft.rotation.z = -0.3
-  group.add(tuft)
+  // Cheek puffs
+  const cheekGeom = new THREE.SphereGeometry(0.1, 5, 4)
+  const leftCheek = new THREE.Mesh(cheekGeom, highlightMaterial)
+  leftCheek.position.set(0.48, 0.62, 0.18)
+  leftCheek.scale.set(0.8, 0.7, 0.6)
+  group.add(leftCheek)
 
-  // Beak - cone pointing forward
-  const beakGeom = new THREE.ConeGeometry(0.1, 0.35, 8)
+  const rightCheek = new THREE.Mesh(cheekGeom, highlightMaterial)
+  rightCheek.position.set(0.48, 0.62, -0.18)
+  rightCheek.scale.set(0.8, 0.7, 0.6)
+  group.add(rightCheek)
+
+  // Head tuft - messier, multiple feathers
+  const tuftGeom = new THREE.ConeGeometry(0.04, 0.14, 4)
+  const tuft1 = new THREE.Mesh(tuftGeom, bodyMaterial)
+  tuft1.position.set(0.35, 0.95, 0)
+  tuft1.rotation.z = -0.4
+  group.add(tuft1)
+
+  const tuft2 = new THREE.Mesh(tuftGeom, bodyMaterial)
+  tuft2.position.set(0.32, 0.92, 0.06)
+  tuft2.rotation.z = -0.2
+  tuft2.rotation.x = 0.3
+  tuft2.scale.setScalar(0.8)
+  group.add(tuft2)
+
+  const tuft3 = new THREE.Mesh(tuftGeom, bodyMaterial)
+  tuft3.position.set(0.32, 0.92, -0.06)
+  tuft3.rotation.z = -0.2
+  tuft3.rotation.x = -0.3
+  tuft3.scale.setScalar(0.7)
+  group.add(tuft3)
+
+  // Beak - flatter, more duck-like
+  const beakGeom = new THREE.ConeGeometry(0.09, 0.32, 6)
+  beakGeom.scale(1, 1, 0.6) // Flatten it
   const beak = new THREE.Mesh(beakGeom, beakMaterial)
   beak.rotation.z = -Math.PI / 2
-  beak.position.set(0.8, 0.65, 0)
+  beak.position.set(0.75, 0.62, 0)
   group.add(beak)
 
   // Eyes - big and expressive Wind Waker style
