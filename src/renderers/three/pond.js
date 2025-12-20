@@ -443,10 +443,11 @@ export function createPond(scene, gradientMap) {
       const z = waterPositions[i + 2]
       const dist = Math.sqrt(x * x + z * z)
 
-      // Gentle concentric waves from center
-      const wave1 = Math.sin(dist * 1.5 - elapsed * 2) * 0.03
-      // Cross-wave pattern
-      const wave2 = Math.sin(x * 0.8 + elapsed * 1.5) * Math.cos(z * 0.8 + elapsed * 1.2) * 0.02
+      // Gentle concentric waves from center (main ripple)
+      const wave1 = Math.sin(dist * 1.2 - elapsed * 1.5) * 0.025
+      // Secondary offset ripple (different origin point for natural look)
+      const dist2 = Math.sqrt((x - 1) * (x - 1) + (z + 0.5) * (z + 0.5))
+      const wave2 = Math.sin(dist2 * 1.4 - elapsed * 1.8) * 0.015
 
       positions[i + 1] = waterPositions[i + 1] + wave1 + wave2
     }
