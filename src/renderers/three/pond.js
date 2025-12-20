@@ -49,15 +49,12 @@ export function createPond(scene, gradientMap) {
   sand.position.y = -0.02
   group.add(sand)
 
-  // Water surface - higher resolution for wave animation
-  const waterGeom = new THREE.CircleGeometry(radius, 48, 8)
+  // Water surface
+  const waterGeom = new THREE.CircleGeometry(radius, 32)
   waterGeom.rotateX(-Math.PI / 2)
   const water = new THREE.Mesh(waterGeom, waterMaterial)
   water.position.y = 0
   group.add(water)
-
-  // Store original water vertex positions for wave animation
-  const waterPositions = waterGeom.attributes.position.array.slice()
 
   // Water depth visual (darker center with gradient)
   const deepGeom = new THREE.CircleGeometry(radius * 0.7, 32)
@@ -436,23 +433,6 @@ export function createPond(scene, gradientMap) {
   let smokeSpawnTimer = 0
 
   function update(delta, elapsed) {
-    // Animate water surface waves
-    const positions = waterGeom.attributes.position.array
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = waterPositions[i]
-      const z = waterPositions[i + 2]
-      const dist = Math.sqrt(x * x + z * z)
-
-      // Gentle concentric waves from center (main ripple)
-      const wave1 = Math.sin(dist * 1.2 - elapsed * 1.5) * 0.025
-      // Secondary offset ripple (different origin point for natural look)
-      const dist2 = Math.sqrt((x - 1) * (x - 1) + (z + 0.5) * (z + 0.5))
-      const wave2 = Math.sin(dist2 * 1.4 - elapsed * 1.8) * 0.015
-
-      positions[i + 1] = waterPositions[i + 1] + wave1 + wave2
-    }
-    waterGeom.attributes.position.needsUpdate = true
-
     // Animate water highlight
     highlight.position.x = -radius * 0.35 + Math.sin(elapsed * 0.5) * 0.3
     highlight.position.z = -radius * 0.35 + Math.cos(elapsed * 0.5) * 0.3
