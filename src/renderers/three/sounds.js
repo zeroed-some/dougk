@@ -102,4 +102,55 @@ export function playMonch() {
 
   body.start(now)
   body.stop(now + bodyLength)
+
+  // Tonal body - soft pitched "chomp" character
+  // Primary tone - warm mid frequency
+  const tone1 = ctx.createOscillator()
+  tone1.type = 'triangle'
+  tone1.frequency.setValueAtTime(280, now)
+  tone1.frequency.linearRampToValueAtTime(180, now + 0.08)
+
+  const tone1Env = ctx.createGain()
+  tone1Env.gain.setValueAtTime(0, now)
+  tone1Env.gain.linearRampToValueAtTime(0.12, now + 0.015) // Soft attack
+  tone1Env.gain.linearRampToValueAtTime(0.06, now + 0.05)
+  tone1Env.gain.linearRampToValueAtTime(0, now + 0.1)
+
+  tone1.connect(tone1Env)
+  tone1Env.connect(highPass)
+  tone1.start(now)
+  tone1.stop(now + 0.12)
+
+  // Secondary harmonic - adds richness
+  const tone2 = ctx.createOscillator()
+  tone2.type = 'sine'
+  tone2.frequency.setValueAtTime(420, now)
+  tone2.frequency.linearRampToValueAtTime(300, now + 0.06)
+
+  const tone2Env = ctx.createGain()
+  tone2Env.gain.setValueAtTime(0, now)
+  tone2Env.gain.linearRampToValueAtTime(0.06, now + 0.01)
+  tone2Env.gain.linearRampToValueAtTime(0, now + 0.07)
+
+  tone2.connect(tone2Env)
+  tone2Env.connect(highPass)
+  tone2.start(now)
+  tone2.stop(now + 0.1)
+
+  // Soft low "gulp" undertone - filtered to be safe
+  const gulp = ctx.createOscillator()
+  gulp.type = 'sine'
+  gulp.frequency.setValueAtTime(200, now + 0.02)
+  gulp.frequency.linearRampToValueAtTime(160, now + 0.1)
+
+  const gulpEnv = ctx.createGain()
+  gulpEnv.gain.setValueAtTime(0, now)
+  gulpEnv.gain.linearRampToValueAtTime(0, now + 0.02) // Delayed start
+  gulpEnv.gain.linearRampToValueAtTime(0.08, now + 0.04)
+  gulpEnv.gain.linearRampToValueAtTime(0, now + 0.12)
+
+  gulp.connect(gulpEnv)
+  gulpEnv.connect(highPass)
+  gulp.start(now)
+  gulp.stop(now + 0.15)
 }
