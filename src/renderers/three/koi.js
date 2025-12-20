@@ -222,8 +222,8 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
       const dz = s.targetZ - koi.group.position.z
       const dist = Math.hypot(dx, dz)
 
-      // Always swim forward, turn gradually
-      const targetRot = Math.atan2(dx, dz)
+      // Calculate target rotation - koi model faces +X, so use atan2(dz, dx)
+      const targetRot = Math.atan2(dz, dx)
 
       // Very smooth rotation - fish don't turn sharply
       let rotDiff = targetRot - koi.group.rotation.y
@@ -234,10 +234,10 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
       const turnRate = s.panicMode ? 2.5 : 1.2
       koi.group.rotation.y += rotDiff * turnRate * delta
 
-      // Always moving forward (fish don't stop mid-water)
+      // Move in the direction koi is facing (model faces +X, so use cos/sin)
       const moveSpeed = s.panicMode ? s.speed * 1.8 : s.speed * 0.5
-      const moveX = Math.sin(koi.group.rotation.y) * moveSpeed * delta
-      const moveZ = Math.cos(koi.group.rotation.y) * moveSpeed * delta
+      const moveX = Math.cos(koi.group.rotation.y) * moveSpeed * delta
+      const moveZ = Math.sin(koi.group.rotation.y) * moveSpeed * delta
       koi.group.position.x += moveX
       koi.group.position.z += moveZ
 

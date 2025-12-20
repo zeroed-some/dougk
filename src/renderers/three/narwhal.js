@@ -238,13 +238,13 @@ export function createDonny(scene, gradientMap) {
         // Rise from the water
         const emergeProgress = Math.min(state.timer / 1.5, 1)
         const easeOut = 1 - Math.pow(1 - emergeProgress, 3)
-        group.position.y = -2 + easeOut * 2.5 // Rise higher out of water
+        group.position.y = -2 + easeOut * 2.25 // Rise higher out of water (10% less)
 
         // Slowly turn toward Doug - lugubrious, not laser tracking
         group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.5)
 
-        // Tilt nose UP ~55 degrees - rotate around Z since model faces +X
-        group.rotation.z = 0.95 * easeOut
+        // Tilt nose UP ~50 degrees - rotate around Z since model faces +X (8% less)
+        group.rotation.z = 0.87 * easeOut
 
         // Gentle side-to-side rocking
         group.rotation.x = Math.sin(state.timer * 4) * 0.06
@@ -257,14 +257,14 @@ export function createDonny(scene, gradientMap) {
         break
 
       case 'surfaced':
-        // Bob gently, positioned higher
-        group.position.y = 0.5 + Math.sin(elapsed * 2) * 0.06
+        // Bob gently, positioned at adjusted height
+        group.position.y = 0.25 + Math.sin(elapsed * 2) * 0.06
 
         // Slowly turn toward Doug
         group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.3)
 
-        // Keep steep tilt ~55 degrees - nose up, tail in water
-        group.rotation.z = 0.95 + Math.sin(elapsed * 1.5) * 0.04
+        // Keep tilt ~50 degrees - nose up, tail in water
+        group.rotation.z = 0.87 + Math.sin(elapsed * 1.5) * 0.04
 
         // Gentle side-to-side rocking
         group.rotation.x = Math.sin(elapsed * 1.5) * 0.03
@@ -291,10 +291,10 @@ export function createDonny(scene, gradientMap) {
         // Sink back down
         const submergeProgress = Math.min(state.timer / 1.2, 1)
         const easeIn = Math.pow(submergeProgress, 2)
-        group.position.y = 0.5 - easeIn * 2.7
+        group.position.y = 0.25 - easeIn * 2.5
 
         // Tilt nose down as diving back under
-        group.rotation.z = 0.95 - easeIn * 1.2
+        group.rotation.z = 0.87 - easeIn * 1.1
 
         // Add bubbles/ripples as submerging
         if (Math.random() < delta * 4) {
