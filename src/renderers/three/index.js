@@ -9,10 +9,11 @@ import { createPond } from './pond.js'
 import { BreadManager } from './bread.js'
 import { createDonny } from './narwhal.js'
 import { createKoiSchool } from './koi.js'
+import { createOllie } from './octopus.js'
 import { unlockAudio } from './sounds.js'
 
 let scene, camera, renderer, composer, outlinePass
-let doug, pond, breadManager, donny, koiSchool
+let doug, pond, breadManager, donny, koiSchool, ollie
 let clock
 let animationId = null
 
@@ -93,6 +94,7 @@ export function start(container) {
   breadManager = new BreadManager(scene, toonGradient)
   donny = createDonny(scene, toonGradient)
   koiSchool = createKoiSchool(scene, toonGradient, pond.radius)
+  ollie = createOllie(scene, toonGradient)
 
   // Post-processing
   composer = new EffectComposer(renderer)
@@ -108,7 +110,7 @@ export function start(container) {
   outlinePass.edgeThickness = 1.5
   outlinePass.visibleEdgeColor.set(0x191410)
   outlinePass.hiddenEdgeColor.set(0x191410)
-  outlinePass.selectedObjects = [doug.group, pond.group, donny.group, koiSchool.group]
+  outlinePass.selectedObjects = [doug.group, pond.group, donny.group, koiSchool.group, ollie.group]
   composer.addPass(outlinePass)
   composer.addPass(new OutputPass())
 
@@ -169,6 +171,7 @@ function animate() {
   pond.update(delta, elapsed)
   donny.update(delta, elapsed, pond, doug)
   koiSchool.update(delta, elapsed)
+  ollie.update(delta, elapsed, pond, doug)
 
   composer.render()
 }
@@ -198,6 +201,7 @@ export function stop() {
   pond = null
   donny = null
   koiSchool = null
+  ollie = null
   breadManager = null
 }
 

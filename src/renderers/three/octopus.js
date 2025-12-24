@@ -1,0 +1,348 @@
+// Ollie the Octopus - curious inspector of the pond
+import * as THREE from 'three'
+
+export function createOllie(scene, gradientMap) {
+  const group = new THREE.Group()
+
+  // Color palette - purple theme
+  const bodyColor = 0x7b4b94 // Deep purple
+  const bellyColor = 0xb89bc9 // Lighter lavender
+  const suckerColor = 0xd4a5c9 // Pink-ish
+  const glassRimColor = 0xd4af37 // Gold
+
+  // Materials
+  const bodyMaterial = new THREE.MeshToonMaterial({
+    color: bodyColor,
+    gradientMap: gradientMap
+  })
+
+  const bellyMaterial = new THREE.MeshToonMaterial({
+    color: bellyColor,
+    gradientMap: gradientMap
+  })
+
+  const suckerMaterial = new THREE.MeshToonMaterial({
+    color: suckerColor,
+    gradientMap: gradientMap
+  })
+
+  const glassRimMaterial = new THREE.MeshToonMaterial({
+    color: glassRimColor,
+    gradientMap: gradientMap
+  })
+
+  const glassMaterial = new THREE.MeshBasicMaterial({
+    color: 0x88ccff,
+    transparent: true,
+    opacity: 0.3
+  })
+
+  // Head/Mantle - bulbous dome
+  const mantleGeom = new THREE.SphereGeometry(0.5, 10, 8)
+  mantleGeom.scale(1.2, 1.4, 1.0)
+  const mantle = new THREE.Mesh(mantleGeom, bodyMaterial)
+  mantle.position.y = 0.3
+  group.add(mantle)
+
+  // Lower mantle/body connector
+  const lowerMantleGeom = new THREE.SphereGeometry(0.4, 8, 6)
+  lowerMantleGeom.scale(1.1, 0.8, 1.0)
+  const lowerMantle = new THREE.Mesh(lowerMantleGeom, bellyMaterial)
+  lowerMantle.position.y = -0.1
+  group.add(lowerMantle)
+
+  // Eyes - big and expressive Wind Waker style
+  const eyeGeom = new THREE.SphereGeometry(0.12, 8, 6)
+  const eyeWhiteMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
+  const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+
+  // Left eye
+  const leftEyeWhite = new THREE.Mesh(eyeGeom, eyeWhiteMaterial)
+  leftEyeWhite.position.set(0.25, 0.35, 0.35)
+  leftEyeWhite.scale.set(1, 1.2, 0.8)
+  group.add(leftEyeWhite)
+
+  const leftPupilGeom = new THREE.SphereGeometry(0.06, 6, 4)
+  const leftPupil = new THREE.Mesh(leftPupilGeom, pupilMaterial)
+  leftPupil.position.set(0.32, 0.35, 0.4)
+  group.add(leftPupil)
+
+  // Right eye
+  const rightEyeWhite = new THREE.Mesh(eyeGeom, eyeWhiteMaterial)
+  rightEyeWhite.position.set(0.25, 0.35, -0.35)
+  rightEyeWhite.scale.set(1, 1.2, 0.8)
+  group.add(rightEyeWhite)
+
+  const rightPupil = new THREE.Mesh(leftPupilGeom, pupilMaterial)
+  rightPupil.position.set(0.32, 0.35, -0.4)
+  group.add(rightPupil)
+
+  // Eye shines
+  const shineGeom = new THREE.SphereGeometry(0.03, 6, 4)
+  const shineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
+
+  const leftShine = new THREE.Mesh(shineGeom, shineMaterial)
+  leftShine.position.set(0.35, 0.4, 0.38)
+  group.add(leftShine)
+
+  const rightShine = new THREE.Mesh(shineGeom, shineMaterial)
+  rightShine.position.set(0.35, 0.4, -0.38)
+  group.add(rightShine)
+
+  // Create 8 tentacles
+  const tentacles = []
+  const tentacleGroup = new THREE.Group()
+  tentacleGroup.position.y = -0.3
+
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const tentacle = createTentacle(bodyMaterial, suckerMaterial, gradientMap)
+    tentacle.position.x = Math.cos(angle) * 0.35
+    tentacle.position.z = Math.sin(angle) * 0.35
+    tentacle.rotation.y = -angle + Math.PI / 2
+    // Splay outward slightly
+    tentacle.rotation.z = 0.3
+    tentacles.push(tentacle)
+    tentacleGroup.add(tentacle)
+  }
+
+  group.add(tentacleGroup)
+
+  // Magnifying glass - attached to front-right tentacle (index 1)
+  const magGlassGroup = new THREE.Group()
+
+  // Handle
+  const handleGeom = new THREE.CylinderGeometry(0.02, 0.025, 0.3, 6)
+  const handle = new THREE.Mesh(handleGeom, glassRimMaterial)
+  handle.rotation.z = Math.PI / 2
+  handle.position.x = -0.15
+  magGlassGroup.add(handle)
+
+  // Rim
+  const rimGeom = new THREE.TorusGeometry(0.15, 0.02, 8, 16)
+  const rim = new THREE.Mesh(rimGeom, glassRimMaterial)
+  magGlassGroup.add(rim)
+
+  // Glass lens
+  const lensGeom = new THREE.CircleGeometry(0.14, 16)
+  const lens = new THREE.Mesh(lensGeom, glassMaterial)
+  lens.position.z = 0.01
+  magGlassGroup.add(lens)
+
+  // Position magnifying glass at end of front-right tentacle
+  magGlassGroup.position.set(0.9, -0.5, -0.3)
+  magGlassGroup.rotation.y = -0.5
+  group.add(magGlassGroup)
+
+  // Ollie starts hidden below the water
+  group.position.y = -3
+  group.visible = false
+
+  scene.add(group)
+
+  // State
+  const state = {
+    mode: 'waiting',
+    timer: 45 + Math.random() * 30, // First appearance in 45-75 seconds (after narwhal)
+    emergeX: 0,
+    emergeZ: 0,
+    surfaceTime: 0
+  }
+
+  function createTentacle(bodyMat, suckerMat, gradient) {
+    const tentacleObj = new THREE.Group()
+
+    // 3 segments, getting smaller
+    const segments = [
+      { radius: 0.08, length: 0.35 },
+      { radius: 0.06, length: 0.3 },
+      { radius: 0.04, length: 0.25 }
+    ]
+
+    let yOffset = 0
+    segments.forEach((seg, idx) => {
+      const segGeom = new THREE.CylinderGeometry(seg.radius * 0.7, seg.radius, seg.length, 6)
+      const segMesh = new THREE.Mesh(segGeom, bodyMat)
+      segMesh.position.y = yOffset - seg.length / 2
+      tentacleObj.add(segMesh)
+
+      // Add suckers on underside (only first two segments)
+      if (idx < 2) {
+        for (let s = 0; s < 2; s++) {
+          const suckerGeom = new THREE.SphereGeometry(0.015, 4, 4)
+          const sucker = new THREE.Mesh(suckerGeom, suckerMat)
+          sucker.position.set(-seg.radius * 0.8, yOffset - seg.length * 0.3 - s * 0.12, 0)
+          sucker.scale.set(1, 0.5, 1)
+          tentacleObj.add(sucker)
+        }
+      }
+
+      yOffset -= seg.length
+    })
+
+    // Curly tip
+    const tipGeom = new THREE.SphereGeometry(0.03, 6, 4)
+    tipGeom.scale(1, 1.5, 1)
+    const tip = new THREE.Mesh(tipGeom, bodyMat)
+    tip.position.y = yOffset - 0.03
+    tentacleObj.add(tip)
+
+    return tentacleObj
+  }
+
+  function startRumble(pond) {
+    state.mode = 'rumbling'
+    state.timer = 0
+
+    // Pick random spot in outer zone of pond (70-90% radius)
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.random() * pond.radius * 0.2 + pond.radius * 0.7
+    state.emergeX = Math.cos(angle) * dist
+    state.emergeZ = Math.sin(angle) * dist
+
+    group.position.x = state.emergeX
+    group.position.z = state.emergeZ
+    group.rotation.y = angle + Math.PI / 2
+  }
+
+  // Helper to smoothly interpolate angles
+  function lerpAngle(from, to, t) {
+    let diff = to - from
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    return from + diff * t
+  }
+
+  function update(delta, elapsed, pond, doug) {
+    state.timer += delta
+
+    // Calculate angle to face Doug
+    let angleToDoug = 0
+    if (doug) {
+      const dougPos = doug.getPosition()
+      const dx = dougPos.x - group.position.x
+      const dz = dougPos.z - group.position.z
+      angleToDoug = Math.atan2(dx, dz)
+    }
+
+    // Animate tentacles (always, when visible)
+    if (group.visible) {
+      tentacles.forEach((t, i) => {
+        const phase = i * (Math.PI / 4)
+        // Wave motion
+        t.rotation.x = 0.3 + Math.sin(elapsed * 2 + phase) * 0.25
+        t.rotation.z = 0.3 + Math.cos(elapsed * 1.5 + phase) * 0.15
+      })
+
+      // Magnifying glass sway
+      magGlassGroup.rotation.z = Math.sin(elapsed * 3) * 0.15
+      magGlassGroup.rotation.x = Math.sin(elapsed * 2.5) * 0.1
+    }
+
+    switch (state.mode) {
+      case 'waiting':
+        if (state.timer >= 75) {
+          startRumble(pond)
+        }
+        break
+
+      case 'rumbling':
+        // Create rumble ripples
+        if (state.timer < 2) {
+          if (Math.random() < delta * 6) {
+            const rx = state.emergeX + (Math.random() - 0.5) * 1.0
+            const rz = state.emergeZ + (Math.random() - 0.5) * 1.0
+            pond.addRipple(rx, rz)
+          }
+        } else {
+          state.mode = 'emerging'
+          state.timer = 0
+          group.visible = true
+          group.position.y = -2
+          group.rotation.y = angleToDoug
+        }
+        break
+
+      case 'emerging':
+        const emergeProgress = Math.min(state.timer / 1.8, 1)
+        const easeOut = 1 - Math.pow(1 - emergeProgress, 3)
+        group.position.y = -2 + easeOut * 2.2
+
+        // Slowly turn toward Doug - curious inspection
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.6)
+
+        // Gentle wobble during emerge
+        group.rotation.x = Math.sin(state.timer * 3) * 0.05
+        group.rotation.z = Math.cos(state.timer * 2.5) * 0.04
+
+        if (emergeProgress >= 1) {
+          state.mode = 'surfaced'
+          state.timer = 0
+          state.surfaceTime = 5 + Math.random() * 3 // Stay 5-8 seconds
+        }
+        break
+
+      case 'surfaced':
+        // Bob gently
+        group.position.y = 0.2 + Math.sin(elapsed * 2) * 0.05
+
+        // Track Doug with magnifying glass - curious inspection!
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.4)
+
+        // Gentle rocking
+        group.rotation.x = Math.sin(elapsed * 1.2) * 0.03
+        group.rotation.z = Math.cos(elapsed * 1.0) * 0.02
+
+        // Extra curious magnifying glass wobble when pointed at Doug
+        magGlassGroup.rotation.y = -0.5 + Math.sin(elapsed * 4) * 0.1
+
+        // Occasional ripples
+        if (Math.random() < delta * 0.4) {
+          pond.addRipple(
+            group.position.x + (Math.random() - 0.5) * 0.6,
+            group.position.z + (Math.random() - 0.5) * 0.6
+          )
+        }
+
+        if (state.timer >= state.surfaceTime) {
+          state.mode = 'submerging'
+          state.timer = 0
+        }
+        break
+
+      case 'submerging':
+        const submergeProgress = Math.min(state.timer / 1.5, 1)
+        const easeIn = Math.pow(submergeProgress, 2)
+        group.position.y = 0.2 - easeIn * 2.5
+
+        // Tentacles curl inward as submerging
+        tentacles.forEach((t, i) => {
+          const phase = i * (Math.PI / 4)
+          t.rotation.x = 0.3 + easeIn * 0.5 + Math.sin(elapsed * 2 + phase) * 0.15
+        })
+
+        // Add ripples as submerging
+        if (Math.random() < delta * 5) {
+          pond.addRipple(
+            group.position.x + (Math.random() - 0.5) * 0.8,
+            group.position.z + (Math.random() - 0.5) * 0.8
+          )
+        }
+
+        if (submergeProgress >= 1) {
+          state.mode = 'waiting'
+          state.timer = 0
+          group.visible = false
+          group.position.y = -3
+          group.rotation.x = 0
+          group.rotation.z = 0
+        }
+        break
+    }
+  }
+
+  return {
+    group,
+    update
+  }
+}
