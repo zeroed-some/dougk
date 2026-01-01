@@ -359,6 +359,112 @@ export function createPond(scene, gradientMap) {
   group.add(village)
 
   // ============================================
+  // BOATHOUSE - cozy little structure at pond corner
+  // ============================================
+
+  const boathouse = new THREE.Group()
+  const boathouseX = -4.2
+  const boathouseZ = 3.2
+
+  // Boathouse materials
+  const boathouseWoodMaterial = new THREE.MeshToonMaterial({
+    color: 0x8b6914, // Weathered wood
+    gradientMap: gradientMap
+  })
+  const boathouseRoofMaterial = new THREE.MeshToonMaterial({
+    color: 0x5a4a3a, // Dark wood/slate roof
+    gradientMap: gradientMap
+  })
+  const boathouseTrimMaterial = new THREE.MeshToonMaterial({
+    color: 0x6b5030, // Darker trim
+    gradientMap: gradientMap
+  })
+
+  // Main building - slightly larger than houses to dwarf Doug
+  const boathouseBodyGeom = new THREE.BoxGeometry(1.2, 0.9, 1.0)
+  const boathouseBody = new THREE.Mesh(boathouseBodyGeom, boathouseWoodMaterial)
+  boathouseBody.position.set(0, 0.45, 0)
+  boathouse.add(boathouseBody)
+
+  // Roof - pitched roof
+  const roofShape = new THREE.Shape()
+  roofShape.moveTo(-0.75, 0)
+  roofShape.lineTo(0, 0.5)
+  roofShape.lineTo(0.75, 0)
+  roofShape.lineTo(-0.75, 0)
+
+  const roofExtrudeSettings = { depth: 1.15, bevelEnabled: false }
+  const boathouseRoofGeom = new THREE.ExtrudeGeometry(roofShape, roofExtrudeSettings)
+  const boathouseRoof = new THREE.Mesh(boathouseRoofGeom, boathouseRoofMaterial)
+  boathouseRoof.position.set(0, 0.9, -0.575)
+  boathouse.add(boathouseRoof)
+
+  // Roof overhang trim
+  const overhangGeom = new THREE.BoxGeometry(1.5, 0.05, 0.08)
+  const overhangFront = new THREE.Mesh(overhangGeom, boathouseTrimMaterial)
+  overhangFront.position.set(0, 0.92, 0.54)
+  boathouse.add(overhangFront)
+  const overhangBack = new THREE.Mesh(overhangGeom, boathouseTrimMaterial)
+  overhangBack.position.set(0, 0.92, -0.54)
+  boathouse.add(overhangBack)
+
+  // Door opening (dark rectangle facing pond)
+  const doorGeom = new THREE.PlaneGeometry(0.45, 0.6)
+  const doorMaterial = new THREE.MeshToonMaterial({
+    color: 0x1a1a1a,
+    gradientMap: gradientMap
+  })
+  const door = new THREE.Mesh(doorGeom, doorMaterial)
+  door.position.set(0.601, 0.35, 0.15)
+  door.rotation.y = Math.PI / 2
+  boathouse.add(door)
+
+  // Window on side
+  const boathouseWindowGeom = new THREE.PlaneGeometry(0.25, 0.2)
+  const boathouseWindowMaterial = new THREE.MeshToonMaterial({
+    color: 0x6b9bc3,
+    gradientMap: gradientMap
+  })
+  const boathouseWindow = new THREE.Mesh(boathouseWindowGeom, boathouseWindowMaterial)
+  boathouseWindow.position.set(0, 0.55, 0.51)
+  boathouse.add(boathouseWindow)
+
+  // Window frame
+  const frameH = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.02, 0.02),
+    boathouseTrimMaterial
+  )
+  frameH.position.set(0, 0.55, 0.52)
+  boathouse.add(frameH)
+  const frameV = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, 0.25, 0.02),
+    boathouseTrimMaterial
+  )
+  frameV.position.set(0, 0.55, 0.52)
+  boathouse.add(frameV)
+
+  // Dock/platform extending toward pond
+  const dockGeom = new THREE.BoxGeometry(1.0, 0.08, 0.6)
+  const dock = new THREE.Mesh(dockGeom, boathouseWoodMaterial)
+  dock.position.set(1.1, 0.04, 0.15)
+  boathouse.add(dock)
+
+  // Dock support posts
+  const dockPostGeom = new THREE.CylinderGeometry(0.04, 0.05, 0.3, 6)
+  const dockPost1 = new THREE.Mesh(dockPostGeom, boathouseTrimMaterial)
+  dockPost1.position.set(1.5, -0.1, 0.35)
+  boathouse.add(dockPost1)
+  const dockPost2 = new THREE.Mesh(dockPostGeom, boathouseTrimMaterial)
+  dockPost2.position.set(1.5, -0.1, -0.05)
+  boathouse.add(dockPost2)
+
+  // Position boathouse at corner, angled toward pond
+  boathouse.position.set(boathouseX, 0, boathouseZ)
+  boathouse.rotation.y = Math.PI / 4 + 0.3 // Angled toward pond center
+
+  group.add(boathouse)
+
+  // ============================================
   // TREES - scattered around the edges
   // ============================================
 
