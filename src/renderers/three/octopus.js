@@ -89,33 +89,36 @@ export function createOllie(scene, gradientMap) {
   rightShine.position.set(0.35, 0.4, -0.38)
   group.add(rightShine)
 
-  // Create 8 tentacles
+  // Create 8 tentacles - splayed outward evenly around the body like \./
   const tentacles = []
   const tentacleGroup = new THREE.Group()
-  tentacleGroup.position.y = -0.3
+  tentacleGroup.position.y = -0.05 // Raised up so tentacles emerge above water
 
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2
     const tentacle = createTentacle(bodyMaterial, suckerMaterial, gradientMap)
+
+    // Position at edge of lower body
     tentacle.position.x = Math.cos(angle) * 0.35
     tentacle.position.z = Math.sin(angle) * 0.35
-    tentacle.rotation.y = -angle + Math.PI / 2
-    // Splay outward slightly
-    tentacle.rotation.z = 0.3
+
+    // Simply rotate around Y to spread evenly - tentacles extend in +Z and curve up
+    tentacle.rotation.y = angle
+
     tentacles.push(tentacle)
     tentacleGroup.add(tentacle)
   }
 
   group.add(tentacleGroup)
 
-  // Magnifying glass - attached to front-right tentacle (index 1)
+  // Magnifying glass - will be attached to front tentacle (index 0)
   const magGlassGroup = new THREE.Group()
 
-  // Handle
-  const handleGeom = new THREE.CylinderGeometry(0.02, 0.025, 0.3, 6)
+  // Handle - longer and thicker for visibility
+  const handleGeom = new THREE.CylinderGeometry(0.03, 0.035, 0.25, 6)
   const handle = new THREE.Mesh(handleGeom, glassRimMaterial)
   handle.rotation.z = Math.PI / 2
-  handle.position.x = -0.15
+  handle.position.x = -0.18
   magGlassGroup.add(handle)
 
   // Rim
@@ -129,10 +132,30 @@ export function createOllie(scene, gradientMap) {
   lens.position.z = 0.01
   magGlassGroup.add(lens)
 
-  // Position magnifying glass at end of front-right tentacle
-  magGlassGroup.position.set(0.9, -0.5, -0.3)
-  magGlassGroup.rotation.y = -0.5
-  group.add(magGlassGroup)
+  // Back of lens for visibility from other side
+  const lensBack = new THREE.Mesh(lensGeom, glassMaterial)
+  lensBack.position.z = -0.01
+  lensBack.rotation.y = Math.PI
+  magGlassGroup.add(lensBack)
+
+  // Attach magnifying glass to the TIP of tentacle 2 (side tentacle, away from body)
+  // Navigate to the last joint of that tentacle
+  let magTentacle = tentacles[2]
+  let lastJoint = magTentacle.children[0] // First joint
+  while (lastJoint.children.length > 1 || (lastJoint.children[0] && lastJoint.children[0].type === 'Group')) {
+    // Find the child that is a Group (the next joint)
+    const nextJoint = lastJoint.children.find(c => c.type === 'Group')
+    if (nextJoint) {
+      lastJoint = nextJoint
+    } else {
+      break
+    }
+  }
+
+  // Position at the tip of the last segment
+  magGlassGroup.position.set(0, 0.05, 0.15)
+  magGlassGroup.rotation.x = 0.5 // Angle it forward/up for visibility
+  lastJoint.add(magGlassGroup)
 
   // Ollie starts hidden below the water
   group.position.y = -3
@@ -150,42 +173,54 @@ export function createOllie(scene, gradientMap) {
   }
 
   function createTentacle(bodyMat, suckerMat, gradient) {
+    // Build tentacle as a chain of segments, each one a child of the previous
+    // This creates a smooth curve by rotating each joint
     const tentacleObj = new THREE.Group()
 
-    // 3 segments, getting smaller
-    const segments = [
-      { radius: 0.08, length: 0.35 },
-      { radius: 0.06, length: 0.3 },
-      { radius: 0.04, length: 0.25 }
-    ]
+    const numSegments = 5
+    let currentParent = tentacleObj
 
-    let yOffset = 0
-    segments.forEach((seg, idx) => {
-      const segGeom = new THREE.CylinderGeometry(seg.radius * 0.7, seg.radius, seg.length, 6)
-      const segMesh = new THREE.Mesh(segGeom, bodyMat)
-      segMesh.position.y = yOffset - seg.length / 2
-      tentacleObj.add(segMesh)
+    for (let idx = 0; idx < numSegments; idx++) {
+      const radius = 0.065 - idx * 0.01
+      const length = 0.18 - idx * 0.015
 
-      // Add suckers on underside (only first two segments)
-      if (idx < 2) {
-        for (let s = 0; s < 2; s++) {
-          const suckerGeom = new THREE.SphereGeometry(0.015, 4, 4)
-          const sucker = new THREE.Mesh(suckerGeom, suckerMat)
-          sucker.position.set(-seg.radius * 0.8, yOffset - seg.length * 0.3 - s * 0.12, 0)
-          sucker.scale.set(1, 0.5, 1)
-          tentacleObj.add(sucker)
-        }
+      // Create a joint group for this segment
+      const joint = new THREE.Group()
+
+      // Position joint at end of parent (except first one at origin)
+      if (idx > 0) {
+        joint.position.z = 0.16 - (idx - 1) * 0.012 // Length of previous segment
       }
 
-      yOffset -= seg.length
-    })
+      // Rotate joint to curve upward - more curve toward the tip
+      joint.rotation.x = -0.28 - idx * 0.08
 
-    // Curly tip
-    const tipGeom = new THREE.SphereGeometry(0.03, 6, 4)
-    tipGeom.scale(1, 1.5, 1)
+      // Create the segment mesh
+      const segGeom = new THREE.CylinderGeometry(radius * 0.7, radius, length, 6)
+      segGeom.rotateX(Math.PI / 2) // Lay along Z axis
+      segGeom.translate(0, 0, length / 2) // Move so base is at origin
+
+      const segMesh = new THREE.Mesh(segGeom, bodyMat)
+      joint.add(segMesh)
+
+      // Add suckers on underside
+      if (idx < 4) {
+        const suckerGeom = new THREE.SphereGeometry(0.015, 4, 4)
+        const sucker = new THREE.Mesh(suckerGeom, suckerMat)
+        sucker.position.set(0, -radius * 0.85, length * 0.5)
+        sucker.scale.set(1, 0.5, 1)
+        joint.add(sucker)
+      }
+
+      currentParent.add(joint)
+      currentParent = joint
+    }
+
+    // Curly tip at the end
+    const tipGeom = new THREE.SphereGeometry(0.02, 6, 4)
     const tip = new THREE.Mesh(tipGeom, bodyMat)
-    tip.position.y = yOffset - 0.03
-    tentacleObj.add(tip)
+    tip.position.z = 0.12
+    currentParent.add(tip)
 
     return tentacleObj
   }
@@ -228,15 +263,17 @@ export function createOllie(scene, gradientMap) {
     // Animate tentacles (always, when visible)
     if (group.visible) {
       tentacles.forEach((t, i) => {
+        const baseAngle = (i / 8) * Math.PI * 2
         const phase = i * (Math.PI / 4)
-        // Wave motion
-        t.rotation.x = 0.3 + Math.sin(elapsed * 2 + phase) * 0.25
-        t.rotation.z = 0.3 + Math.cos(elapsed * 1.5 + phase) * 0.15
+        // Gentle swaying - each tentacle waves side to side
+        t.rotation.y = baseAngle + Math.sin(elapsed * 1.5 + phase) * 0.12
+        // Slight up/down bob
+        t.rotation.x = Math.sin(elapsed * 2 + phase) * 0.08
       })
 
-      // Magnifying glass sway
-      magGlassGroup.rotation.z = Math.sin(elapsed * 3) * 0.15
-      magGlassGroup.rotation.x = Math.sin(elapsed * 2.5) * 0.1
+      // Magnifying glass gets a little extra wobble for curious inspection look
+      magGlassGroup.rotation.z = Math.sin(elapsed * 3) * 0.1
+      magGlassGroup.rotation.y = Math.sin(elapsed * 2) * 0.15
     }
 
     switch (state.mode) {
@@ -315,10 +352,13 @@ export function createOllie(scene, gradientMap) {
         const easeIn = Math.pow(submergeProgress, 2)
         group.position.y = 0.2 - easeIn * 2.5
 
-        // Tentacles curl inward as submerging
+        // Tentacles curl as submerging
         tentacles.forEach((t, i) => {
+          const baseAngle = (i / 8) * Math.PI * 2
           const phase = i * (Math.PI / 4)
-          t.rotation.x = 0.3 + easeIn * 0.5 + Math.sin(elapsed * 2 + phase) * 0.15
+          t.rotation.y = baseAngle + Math.sin(elapsed * 2 + phase) * 0.05
+          // Curl downward as sinking
+          t.rotation.x = easeIn * 0.4 + Math.sin(elapsed * 2 + phase) * 0.05
         })
 
         // Add ripples as submerging
