@@ -307,6 +307,33 @@ export class PlacementManager {
           }
         })
       }
+
+      // Onion house smoke puffs
+      if (building.userData.buildingType === 'onion_house') {
+        building.traverse((child) => {
+          if (child.userData.isSmokePuff) {
+            const phase = child.userData.phase
+            const cycleTime = 3.0  // Seconds for full cycle
+            const t = ((elapsed * 0.5 + phase * cycleTime) % cycleTime) / cycleTime
+
+            // Rise from 0 to 0.5 units
+            child.position.y = t * 0.5
+
+            // Expand as it rises (scale from 1 to 2)
+            const scale = 1 + t * 1.2
+            child.scale.set(scale, scale, scale)
+
+            // Fade out as it rises
+            if (child.material) {
+              child.material.opacity = 0.6 * (1 - t * 0.8)
+            }
+
+            // Gentle horizontal drift
+            child.position.x = Math.sin(elapsed * 0.8 + phase * 5) * 0.03
+            child.position.z = Math.cos(elapsed * 0.6 + phase * 3) * 0.02
+          }
+        })
+      }
     }
   }
 

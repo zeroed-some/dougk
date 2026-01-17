@@ -478,6 +478,36 @@ export function createOnionHouse(gradientMap) {
   chimneyGroup.rotation.x = -0.15
   group.add(chimneyGroup)
 
+  // Smoke puffs - create several that will be animated
+  const smokeGroup = new THREE.Group()
+  smokeGroup.userData.isSmoke = true
+
+  const smokeMaterial = new THREE.MeshBasicMaterial({
+    color: 0xcccccc,
+    transparent: true,
+    opacity: 0.6
+  })
+
+  // Create 4 smoke puffs at different phases
+  for (let i = 0; i < 4; i++) {
+    const puffGeom = new THREE.SphereGeometry(0.04, 6, 4)
+    const puff = new THREE.Mesh(puffGeom, smokeMaterial.clone())
+    puff.userData.isSmokePuff = true
+    puff.userData.phase = i * 0.25  // Stagger the animation phases
+    puff.userData.baseY = 0
+    puff.position.set(
+      (Math.random() - 0.5) * 0.03,
+      0,
+      (Math.random() - 0.5) * 0.03
+    )
+    smokeGroup.add(puff)
+  }
+
+  // Position smoke at chimney top (in world space, accounting for chimney tilt)
+  // Chimney cap is at local y=0.32, chimney group at (-0.25, 0.75, 0.2)
+  smokeGroup.position.set(-0.35, 1.05, 0.15)
+  group.add(smokeGroup)
+
   // Little window
   const windowGeom = new THREE.CircleGeometry(0.08, 8)
   const windowMaterial = new THREE.MeshBasicMaterial({
