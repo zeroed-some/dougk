@@ -5,28 +5,46 @@ import { playMonch } from './sounds.js'
 export function createDoug(scene, gradientMap) {
   const group = new THREE.Group()
 
-  // Color palette - vibrant Wind Waker yellows
-  const bodyColor = 0xffdc50 // Warm yellow
-  const bodyHighlight = 0xfff0a0 // Light yellow
-  const beakColor = 0xff9020 // Bright orange
-  const eyeWhite = 0xffffff
-  const eyePupil = 0x191410
+  // Store gradientMap for accessory creation
+  const storedGradientMap = gradientMap
 
-  // Toon materials
+  // Default colors - vibrant Wind Waker yellows
+  const defaultColors = {
+    body: 0xffdc50,
+    highlight: 0xfff0a0,
+    beak: 0xff9020
+  }
+
+  // Toon materials (stored for outfit swapping)
   const bodyMaterial = new THREE.MeshToonMaterial({
-    color: bodyColor,
+    color: defaultColors.body,
     gradientMap: gradientMap
   })
 
   const highlightMaterial = new THREE.MeshToonMaterial({
-    color: bodyHighlight,
+    color: defaultColors.highlight,
     gradientMap: gradientMap
   })
 
   const beakMaterial = new THREE.MeshToonMaterial({
-    color: beakColor,
+    color: defaultColors.beak,
     gradientMap: gradientMap
   })
+
+  // Accessory tracking
+  const accessories = {
+    head: null,
+    face: null
+  }
+
+  // Mount points for accessories
+  const mountPoints = {
+    head: new THREE.Vector3(0.38, 0.98, 0),
+    face: new THREE.Vector3(0.72, 0.78, 0)
+  }
+
+  const eyeWhite = 0xffffff
+  const eyePupil = 0x191410
 
   const eyeWhiteMaterial = new THREE.MeshToonMaterial({
     color: eyeWhite,
@@ -246,7 +264,47 @@ export function createDoug(scene, gradientMap) {
     )
   }
 
-  function update(delta, elapsed, breadBits, pond) {
+  function update(delta, elapsed, breadBits, pond, options = {}) {
+    const { paused = false, focusTarget = null } = options
+
+    // When paused (during dialog), stop movement but keep animations
+    if (paused) {
+      state.isMoving = false
+
+      // If there's a focus target, slowly turn to face it
+      if (focusTarget) {
+        const dx = focusTarget.x - state.position.x
+        const dz = focusTarget.z - state.position.z
+        const targetAngle = Math.atan2(dx, dz)
+        state.rotation = lerpAngle(state.rotation, targetAngle, delta * 2)
+      }
+
+      // Apply position (no movement, just stay in place)
+      group.position.x = state.position.x
+      group.position.z = state.position.z
+
+      // Gentle bobbing
+      const bobAmount = Math.sin(elapsed * 2)
+      group.position.y = bobAmount * 0.03
+
+      // Rotation
+      group.rotation.y = state.rotation - Math.PI / 2
+
+      // Subtle idle animations
+      leftWing.rotation.z = Math.sin(elapsed * 2) * 0.05
+      rightWing.rotation.z = -Math.sin(elapsed * 2) * 0.05
+      head.position.y = 0.7 + Math.sin(elapsed * 1.5) * 0.02
+
+      // Occasional idle ripple
+      state.rippleTimer += delta
+      if (state.rippleTimer > 2 && bobAmount < -0.9) {
+        state.rippleTimer = 0
+        pond.addRipple(state.position.x, state.position.z)
+      }
+
+      return
+    }
+
     // Find closest bread
     let closestBread = null
     let closestDist = Infinity
@@ -397,9 +455,90 @@ export function createDoug(scene, gradientMap) {
     }
   }
 
+  // Apply an outfit to Doug
+  function applyOutfit(outfit) {
+    if (!outfit) return
+
+    switch (outfit.type) {
+      case 'color_body':
+        if (outfit.colors) {
+          if (outfit.colors.body) bodyMaterial.color.setHex(outfit.colors.body)
+          if (outfit.colors.highlight) highlightMaterial.color.setHex(outfit.colors.highlight)
+        }
+        break
+
+      case 'color_accent':
+        if (outfit.colors && outfit.colors.beak) {
+          beakMaterial.color.setHex(outfit.colors.beak)
+        }
+        break
+
+      case 'accessory_head':
+        // Remove existing head accessory
+        if (accessories.head) {
+          group.remove(accessories.head)
+          accessories.head = null
+        }
+        // Add new accessory
+        if (outfit.meshFactory) {
+          accessories.head = outfit.meshFactory(storedGradientMap)
+          accessories.head.position.copy(mountPoints.head)
+          group.add(accessories.head)
+        }
+        break
+
+      case 'accessory_face':
+        // Remove existing face accessory
+        if (accessories.face) {
+          group.remove(accessories.face)
+          accessories.face = null
+        }
+        // Add new accessory
+        if (outfit.meshFactory) {
+          accessories.face = outfit.meshFactory(storedGradientMap)
+          accessories.face.position.copy(mountPoints.face)
+          accessories.face.rotation.y = -Math.PI / 2 // Face forward
+          group.add(accessories.face)
+        }
+        break
+    }
+  }
+
+  // Remove an outfit from Doug
+  function removeOutfit(outfit) {
+    if (!outfit) return
+
+    switch (outfit.type) {
+      case 'color_body':
+        bodyMaterial.color.setHex(defaultColors.body)
+        highlightMaterial.color.setHex(defaultColors.highlight)
+        break
+
+      case 'color_accent':
+        beakMaterial.color.setHex(defaultColors.beak)
+        break
+
+      case 'accessory_head':
+        if (accessories.head) {
+          group.remove(accessories.head)
+          accessories.head = null
+        }
+        break
+
+      case 'accessory_face':
+        if (accessories.face) {
+          group.remove(accessories.face)
+          accessories.face = null
+        }
+        break
+    }
+  }
+
   return {
     group,
     update,
-    getPosition: () => state.position.clone()
+    getPosition: () => state.position.clone(),
+    applyOutfit,
+    removeOutfit
   }
 }

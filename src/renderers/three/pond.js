@@ -363,8 +363,8 @@ export function createPond(scene, gradientMap) {
   // ============================================
 
   const boathouse = new THREE.Group()
-  const boathouseX = -4.2
-  const boathouseZ = 3.2
+  const boathouseX = -3.3
+  const boathouseZ = 3.8
 
   // Boathouse materials
   const boathouseWoodMaterial = new THREE.MeshToonMaterial({
@@ -463,6 +463,96 @@ export function createPond(scene, gradientMap) {
   boathouse.rotation.y = Math.PI / 4 + 0.3 // Angled toward pond center
 
   group.add(boathouse)
+
+  // ============================================
+  // ROWBOAT - floating by the dock
+  // ============================================
+
+  const rowboat = new THREE.Group()
+
+  const rowboatWoodMaterial = new THREE.MeshToonMaterial({
+    color: 0x6b4423, // Dark wood
+    gradientMap: gradientMap
+  })
+  const rowboatTrimMaterial = new THREE.MeshToonMaterial({
+    color: 0x8b5a2b, // Lighter trim
+    gradientMap: gradientMap
+  })
+
+  // Boat hull - elongated bowl shape using lathe geometry
+  const hullPoints = []
+  hullPoints.push(new THREE.Vector2(0, 0))
+  hullPoints.push(new THREE.Vector2(0.18, 0))
+  hullPoints.push(new THREE.Vector2(0.22, 0.03))
+  hullPoints.push(new THREE.Vector2(0.22, 0.1))
+  hullPoints.push(new THREE.Vector2(0.18, 0.14))
+  hullPoints.push(new THREE.Vector2(0, 0.14))
+
+  const hullGeom = new THREE.LatheGeometry(hullPoints, 8)
+  hullGeom.scale(1, 1, 2.2) // Stretch into boat shape
+  const hull = new THREE.Mesh(hullGeom, rowboatWoodMaterial)
+  hull.rotation.x = Math.PI // Flip right side up
+  hull.position.y = 0.14
+  rowboat.add(hull)
+
+  // Boat seats (thwarts)
+  const seatGeom = new THREE.BoxGeometry(0.32, 0.02, 0.08)
+  const seat1 = new THREE.Mesh(seatGeom, rowboatTrimMaterial)
+  seat1.position.set(0, 0.08, 0.15)
+  rowboat.add(seat1)
+  const seat2 = new THREE.Mesh(seatGeom, rowboatTrimMaterial)
+  seat2.position.set(0, 0.08, -0.15)
+  rowboat.add(seat2)
+
+  // Oars resting in boat
+  const oarMaterial = new THREE.MeshToonMaterial({
+    color: 0x9b7b4a,
+    gradientMap: gradientMap
+  })
+  const oarHandleGeom = new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6)
+  const oarBladeGeom = new THREE.BoxGeometry(0.06, 0.01, 0.15)
+
+  // Left oar
+  const oar1 = new THREE.Group()
+  const oarHandle1 = new THREE.Mesh(oarHandleGeom, oarMaterial)
+  oarHandle1.rotation.z = Math.PI / 2
+  oar1.add(oarHandle1)
+  const oarBlade1 = new THREE.Mesh(oarBladeGeom, oarMaterial)
+  oarBlade1.position.x = 0.28
+  oar1.add(oarBlade1)
+  oar1.position.set(0.12, 0.1, 0)
+  oar1.rotation.y = 0.15
+  rowboat.add(oar1)
+
+  // Right oar
+  const oar2 = new THREE.Group()
+  const oarHandle2 = new THREE.Mesh(oarHandleGeom, oarMaterial)
+  oarHandle2.rotation.z = Math.PI / 2
+  oar2.add(oarHandle2)
+  const oarBlade2 = new THREE.Mesh(oarBladeGeom, oarMaterial)
+  oarBlade2.position.x = -0.28
+  oar2.add(oarBlade2)
+  oar2.position.set(-0.12, 0.1, 0)
+  oar2.rotation.y = -0.15
+  rowboat.add(oar2)
+
+  // Position rowboat by the dock (in the water)
+  // Place it at the pond edge near the dock - inside the water
+  const rowboatAngle = Math.atan2(boathouseZ, boathouseX) // Angle from center to boathouse
+  const rowboatDist = 2.7 // Closer to pond center
+  rowboat.position.set(
+    Math.cos(rowboatAngle) * rowboatDist,
+    0,
+    Math.sin(rowboatAngle) * rowboatDist
+  )
+  rowboat.rotation.y = rowboatAngle + Math.PI / 2 + 0.2 // Parallel to shore, slightly askew
+  rowboat.userData.baseY = 0
+  rowboat.userData.baseX = rowboat.position.x
+  rowboat.userData.baseZ = rowboat.position.z
+  rowboat.userData.phase = Math.random() * Math.PI * 2
+  rowboat.userData.lastRipple = 0
+
+  group.add(rowboat)
 
   // ============================================
   // TREES - scattered around the edges
@@ -581,6 +671,25 @@ export function createPond(scene, gradientMap) {
       createSmokeParticle()
     }
 
+    // Animate rowboat - gentle bobbing and rocking
+    const boatPhase = rowboat.userData.phase
+    rowboat.position.y = rowboat.userData.baseY + Math.sin(elapsed * 1.2 + boatPhase) * 0.025
+    rowboat.rotation.x = Math.sin(elapsed * 0.8 + boatPhase) * 0.03
+    rowboat.rotation.z = Math.sin(elapsed * 1.0 + boatPhase + 1) * 0.025
+    // Slight drift/tug motion
+    rowboat.position.x = rowboat.userData.baseX + Math.sin(elapsed * 0.5 + boatPhase) * 0.015
+    rowboat.position.z = rowboat.userData.baseZ + Math.cos(elapsed * 0.4 + boatPhase) * 0.015
+
+    // Occasional ripples from rowboat
+    rowboat.userData.lastRipple += delta
+    if (rowboat.userData.lastRipple > 2.5 + Math.random() * 2) {
+      rowboat.userData.lastRipple = 0
+      addRipple(
+        rowboat.position.x + (Math.random() - 0.5) * 0.3,
+        rowboat.position.z + (Math.random() - 0.5) * 0.3
+      )
+    }
+
     // Update smoke particles
     for (let i = smokeParticles.length - 1; i >= 0; i--) {
       const smoke = smokeParticles[i]
@@ -607,11 +716,108 @@ export function createPond(scene, gradientMap) {
 
   scene.add(group)
 
+  // Forbidden zones for creature emergence (dock and rowboat areas)
+  const forbiddenZones = [
+    { x: rowboat.position.x, z: rowboat.position.z, radius: 0.8 }, // Rowboat
+    { // Dock area - extends from boathouse toward pond
+      x: boathouseX + Math.cos(Math.PI / 4 + 0.3) * 1.5,
+      z: boathouseZ + Math.sin(Math.PI / 4 + 0.3) * 1.5,
+      radius: 1.2
+    }
+  ]
+
+  function isValidEmergenceSpot(x, z) {
+    for (const zone of forbiddenZones) {
+      const dx = x - zone.x
+      const dz = z - zone.z
+      const dist = Math.sqrt(dx * dx + dz * dz)
+      if (dist < zone.radius) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Add a new forbidden zone (for placed buildings)
+  function addForbiddenZone(x, z, zoneRadius) {
+    forbiddenZones.push({ x, z, radius: zoneRadius })
+  }
+
+  // Snap zones for building placement
+  // Each zone has: id, position, angle (rotation), type, allowed buildings, occupied status
+  const snapZones = [
+    // Water edge zones (for docks, fishing huts)
+    { id: 'water_n', x: 0, z: -4.3, angle: Math.PI, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_ne', x: 3.0, z: -3.0, angle: Math.PI * 0.75, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_e', x: 4.3, z: 0, angle: Math.PI * 0.5, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_se', x: 3.0, z: 3.0, angle: Math.PI * 0.25, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_s', x: 0, z: 4.3, angle: 0, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+
+    // Shore zones (for lighthouse, fence, onion house) - further from water
+    { id: 'shore_n', x: 0, z: -5.5, angle: Math.PI, type: 'shore', allowedBuildings: ['lighthouse', 'fence', 'onion_house'], occupied: false },
+    { id: 'shore_ne', x: 4.0, z: -4.0, angle: Math.PI * 0.75, type: 'shore', allowedBuildings: ['lighthouse', 'fence', 'onion_house'], occupied: false },
+    { id: 'shore_e', x: 5.5, z: 0, angle: Math.PI * 0.5, type: 'shore', allowedBuildings: ['lighthouse', 'fence', 'onion_house'], occupied: false },
+    { id: 'shore_se', x: 4.0, z: 4.0, angle: Math.PI * 0.25, type: 'shore', allowedBuildings: ['lighthouse', 'fence', 'onion_house'], occupied: false },
+    { id: 'shore_s', x: 0, z: 5.5, angle: 0, type: 'shore', allowedBuildings: ['lighthouse', 'fence', 'onion_house'], occupied: false },
+
+    // In-water zones (for reeds)
+    { id: 'water_inner_n', x: 0, z: -2.5, angle: Math.PI, type: 'water', allowedBuildings: ['reeds'], occupied: false },
+    { id: 'water_inner_e', x: 2.5, z: 0, angle: Math.PI * 0.5, type: 'water', allowedBuildings: ['reeds'], occupied: false },
+    { id: 'water_inner_s', x: 0, z: 2.5, angle: 0, type: 'water', allowedBuildings: ['reeds'], occupied: false },
+    { id: 'water_inner_w', x: -2.5, z: 0, angle: -Math.PI * 0.5, type: 'water', allowedBuildings: ['reeds'], occupied: false }
+  ]
+
+  // Get available snap zones for a building type
+  function getAvailableZones(buildingType) {
+    return snapZones.filter(zone =>
+      !zone.occupied && zone.allowedBuildings.includes(buildingType)
+    )
+  }
+
+  // Get zone by ID
+  function getZone(zoneId) {
+    return snapZones.find(z => z.id === zoneId)
+  }
+
+  // Mark a zone as occupied
+  function occupyZone(zoneId) {
+    const zone = getZone(zoneId)
+    if (zone) {
+      zone.occupied = true
+    }
+  }
+
+  // Find nearest valid zone to a point
+  function findNearestZone(x, z, buildingType, snapDistance = 1.5) {
+    const available = getAvailableZones(buildingType)
+    let nearest = null
+    let nearestDist = snapDistance
+
+    for (const zone of available) {
+      const dx = x - zone.x
+      const dz = z - zone.z
+      const dist = Math.sqrt(dx * dx + dz * dz)
+      if (dist < nearestDist) {
+        nearestDist = dist
+        nearest = zone
+      }
+    }
+
+    return nearest
+  }
+
   return {
     group,
     water,
     radius,
     addRipple,
-    update
+    update,
+    isValidEmergenceSpot,
+    addForbiddenZone,
+    snapZones,
+    getAvailableZones,
+    getZone,
+    occupyZone,
+    findNearestZone
   }
 }

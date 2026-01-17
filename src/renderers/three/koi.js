@@ -1,10 +1,79 @@
-// Koi fish - natural swimmers that react to bread
+// Koi fish - natural swimmers that are attracted to bread and can be captured
 import * as THREE from 'three'
+import gameState from './gameState.js'
+import { playCapture } from './sounds.js'
 
 export function createKoiSchool(scene, gradientMap, pondRadius) {
   const group = new THREE.Group()
   const kois = []
   const koiCount = 5
+
+  // Sparkle particles for capture effect
+  const sparkles = []
+  const sparkleMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffd700,
+    transparent: true
+  })
+
+  function createCaptureSparkles(x, y, z) {
+    const particleCount = 12
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2
+      const upAngle = Math.random() * Math.PI * 0.5
+
+      const sparkleGeom = new THREE.OctahedronGeometry(0.06)
+      const sparkle = new THREE.Mesh(sparkleGeom, sparkleMaterial.clone())
+      sparkle.position.set(x, y + 0.1, z)
+
+      // Random velocity outward and upward
+      const speed = 1.5 + Math.random() * 1
+      sparkle.userData = {
+        vx: Math.cos(angle) * Math.cos(upAngle) * speed,
+        vy: Math.sin(upAngle) * speed + 1,
+        vz: Math.sin(angle) * Math.cos(upAngle) * speed,
+        age: 0,
+        maxAge: 0.6 + Math.random() * 0.3,
+        rotSpeed: (Math.random() - 0.5) * 10
+      }
+
+      group.add(sparkle)
+      sparkles.push(sparkle)
+    }
+  }
+
+  function updateSparkles(delta) {
+    for (let i = sparkles.length - 1; i >= 0; i--) {
+      const sparkle = sparkles[i]
+      const d = sparkle.userData
+
+      d.age += delta
+      const progress = d.age / d.maxAge
+
+      // Move
+      sparkle.position.x += d.vx * delta
+      sparkle.position.y += d.vy * delta
+      sparkle.position.z += d.vz * delta
+
+      // Gravity
+      d.vy -= 4 * delta
+
+      // Spin
+      sparkle.rotation.x += d.rotSpeed * delta
+      sparkle.rotation.y += d.rotSpeed * delta
+
+      // Fade and shrink
+      sparkle.material.opacity = 1 - progress
+      sparkle.scale.setScalar(1 - progress * 0.5)
+
+      // Remove when done
+      if (d.age >= d.maxAge) {
+        group.remove(sparkle)
+        sparkle.geometry.dispose()
+        sparkle.material.dispose()
+        sparkles.splice(i, 1)
+      }
+    }
+  }
 
   // Koi color variations
   const koiColors = [
@@ -33,11 +102,18 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
 
     koi.state = {
       speed: 0.3 + Math.random() * 0.3,
-      turnRate: 0,  // Current turning rate
+      turnRate: 0,
       targetTurnRate: 0,
       turnTimer: Math.random() * 3,
-      panicTimer: 0,
-      flickerPhase: Math.random() * Math.PI * 2
+      flickerPhase: Math.random() * Math.PI * 2,
+      // Attraction state
+      attractedTo: null, // { x, z } of bread attracting this koi
+      // Capture state
+      captured: false,
+      beingCaptured: false,
+      captureProgress: 0,
+      respawnTimer: 0,
+      originalScale: 0.9
     }
 
     group.add(koi.group)
@@ -105,28 +181,148 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
     return { group: koiGroup, tail }
   }
 
-  function triggerPanic(x, z) {
+  // Attract koi to nearby bread - replaces panic behavior
+  function attractToBread(breadBits) {
     for (const koi of kois) {
+      if (koi.state.captured || koi.state.beingCaptured) continue
+
+      // Find nearest bread
+      let nearestBread = null
+      let nearestDist = 2.5 // Attraction radius
+
+      for (const bread of breadBits) {
+        const dist = Math.hypot(
+          koi.group.position.x - bread.x,
+          koi.group.position.z - bread.z
+        )
+        if (dist < nearestDist) {
+          nearestDist = dist
+          nearestBread = bread
+        }
+      }
+
+      koi.state.attractedTo = nearestBread
+    }
+  }
+
+  // Legacy panic trigger - keep for ripple effects but make koi scatter briefly
+  function triggerPanic(x, z) {
+    // Now just a brief scatter, not sustained panic
+    for (const koi of kois) {
+      if (koi.state.captured || koi.state.beingCaptured) continue
+
       const dist = Math.hypot(
         koi.group.position.x - x,
         koi.group.position.z - z
       )
 
-      if (dist < 1.5) {
-        koi.state.panicTimer = 1 + Math.random() * 0.5
-
-        // Turn away from the disturbance
+      if (dist < 0.8) {
+        // Brief scatter only when bread lands very close
+        koi.state.attractedTo = null
+        // Turn slightly away then resume
         const awayAngle = Math.atan2(
           koi.group.position.x - x,
           koi.group.position.z - z
         )
-        // Set a strong turn toward the away direction
         let turnNeeded = awayAngle - koi.group.rotation.y
         while (turnNeeded > Math.PI) turnNeeded -= Math.PI * 2
         while (turnNeeded < -Math.PI) turnNeeded += Math.PI * 2
-        koi.state.targetTurnRate = Math.sign(turnNeeded) * 3
+        koi.state.targetTurnRate = Math.sign(turnNeeded) * 2
+        koi.state.turnTimer = 0.3 // Brief scatter
       }
     }
+  }
+
+  // Get koi under a given position (for capture detection)
+  function getKoiUnderPosition(x, z, radius = 0.3) {
+    for (const koi of kois) {
+      if (koi.state.captured || koi.state.beingCaptured) continue
+
+      const dist = Math.hypot(
+        koi.group.position.x - x,
+        koi.group.position.z - z
+      )
+
+      if (dist < radius) {
+        return koi
+      }
+    }
+    return null
+  }
+
+  // Start capturing a koi
+  function startCapture(koi) {
+    if (!koi || koi.state.captured || koi.state.beingCaptured) return false
+    koi.state.beingCaptured = true
+    koi.state.captureProgress = 0
+    koi.state.attractedTo = null
+    return true
+  }
+
+  // Update capture progress - returns true if capture completes
+  function updateCapture(koi, delta) {
+    if (!koi || !koi.state.beingCaptured) return false
+
+    koi.state.captureProgress += delta / 0.8 // 0.8 seconds to capture
+
+    // Scale down and wiggle during capture
+    const scale = koi.state.originalScale * (1 - koi.state.captureProgress * 0.3)
+    koi.group.scale.setScalar(Math.max(scale, 0.4))
+
+    // Wiggle/struggle effect
+    koi.group.rotation.z = Math.sin(koi.state.captureProgress * 20) * 0.3
+
+    if (koi.state.captureProgress >= 1) {
+      completeCapture(koi)
+      return true
+    }
+    return false
+  }
+
+  // Cancel capture in progress
+  function cancelCapture(koi) {
+    if (!koi || !koi.state.beingCaptured) return
+    koi.state.beingCaptured = false
+    koi.state.captureProgress = 0
+    koi.group.scale.setScalar(koi.state.originalScale)
+    koi.group.rotation.z = 0
+  }
+
+  // Complete capture - hide koi and schedule respawn
+  function completeCapture(koi) {
+    // Spawn sparkles at koi position before hiding
+    const pos = koi.group.position
+    createCaptureSparkles(pos.x, pos.y, pos.z)
+
+    koi.state.captured = true
+    koi.state.beingCaptured = false
+    koi.state.captureProgress = 0
+    koi.group.visible = false
+
+    // Schedule respawn
+    koi.state.respawnTimer = 8 + Math.random() * 12 // 8-20 seconds
+
+    // Add to game state and play sound
+    gameState.addKoi(1)
+    playCapture()
+  }
+
+  // Respawn a captured koi
+  function respawnKoi(koi) {
+    koi.state.captured = false
+    koi.group.visible = true
+    koi.group.scale.setScalar(koi.state.originalScale)
+    koi.group.rotation.z = 0
+
+    // Random new position
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.random() * pondRadius * 0.6 + pondRadius * 0.1
+    koi.group.position.set(
+      Math.cos(angle) * dist,
+      -0.08,
+      Math.sin(angle) * dist
+    )
+    koi.group.rotation.y = Math.random() * Math.PI * 2
   }
 
   function update(delta, elapsed) {
@@ -134,30 +330,59 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
       const s = koi.state
       const pos = koi.group.position
 
-      // Update panic
-      const isPanicked = s.panicTimer > 0
-      if (isPanicked) {
-        s.panicTimer -= delta
+      // Handle respawn timer
+      if (s.captured) {
+        s.respawnTimer -= delta
+        if (s.respawnTimer <= 0) {
+          respawnKoi(koi)
+        }
+        continue
+      }
+
+      // Skip movement if being captured
+      if (s.beingCaptured) {
+        continue
       }
 
       // Decide turning behavior
       s.turnTimer -= delta
-      if (s.turnTimer <= 0 && !isPanicked) {
-        // Occasionally change turn rate for natural wandering
-        s.targetTurnRate = (Math.random() - 0.5) * 1.5
-        s.turnTimer = 1 + Math.random() * 3
+
+      // If attracted to bread, swim toward it
+      if (s.attractedTo) {
+        const toBreakX = s.attractedTo.x - pos.x
+        const toBreadZ = s.attractedTo.z - pos.z
+        const distToBread = Math.hypot(toBreakX, toBreadZ)
+
+        if (distToBread < 0.15) {
+          // Very close to bread - slow down and circle
+          s.targetTurnRate = 0.3
+          s.speed = 0.1
+        } else {
+          // Swim toward bread
+          const toBreadAngle = Math.atan2(toBreakX, toBreadZ)
+          let turnNeeded = toBreadAngle - koi.group.rotation.y
+          while (turnNeeded > Math.PI) turnNeeded -= Math.PI * 2
+          while (turnNeeded < -Math.PI) turnNeeded += Math.PI * 2
+
+          s.targetTurnRate = Math.sign(turnNeeded) * Math.min(Math.abs(turnNeeded) * 2, 2)
+          s.speed = 0.4 + Math.min(distToBread * 0.2, 0.3) // Faster when far
+        }
+      } else {
+        // Natural wandering behavior
+        if (s.turnTimer <= 0) {
+          s.targetTurnRate = (Math.random() - 0.5) * 1.5
+          s.turnTimer = 1 + Math.random() * 3
+          s.speed = 0.3 + Math.random() * 0.3
+        }
       }
 
       // Check if heading toward pond edge
       const distFromCenter = Math.hypot(pos.x, pos.z)
       if (distFromCenter > pondRadius * 0.75) {
-        // Calculate angle to center
         const toCenter = Math.atan2(-pos.x, -pos.z)
         let turnNeeded = toCenter - koi.group.rotation.y
         while (turnNeeded > Math.PI) turnNeeded -= Math.PI * 2
         while (turnNeeded < -Math.PI) turnNeeded += Math.PI * 2
-
-        // Steer back toward center
         s.targetTurnRate = Math.sign(turnNeeded) * 1.5
       }
 
@@ -167,19 +392,15 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
       // Apply rotation
       koi.group.rotation.y += s.turnRate * delta
 
-      // Move forward (in the direction the fish is facing, which is +Z in local space)
-      const speed = isPanicked ? s.speed * 2.5 : s.speed
-
-      // Get forward direction from rotation
+      // Move forward
       const forwardX = Math.sin(koi.group.rotation.y)
       const forwardZ = Math.cos(koi.group.rotation.y)
+      pos.x += forwardX * s.speed * delta
+      pos.z += forwardZ * s.speed * delta
 
-      pos.x += forwardX * speed * delta
-      pos.z += forwardZ * speed * delta
-
-      // Tail wiggle - faster when moving fast
-      const wiggleSpeed = isPanicked ? 18 : 10
-      const wiggleAmount = isPanicked ? 0.4 : 0.25
+      // Tail wiggle
+      const wiggleSpeed = s.attractedTo ? 14 : 10
+      const wiggleAmount = s.attractedTo ? 0.35 : 0.25
       koi.tail.rotation.y = Math.sin(elapsed * wiggleSpeed + s.flickerPhase) * wiggleAmount
 
       // Gentle vertical bob
@@ -193,12 +414,20 @@ export function createKoiSchool(scene, gradientMap, pondRadius) {
         pos.z *= scale
       }
     }
+
+    // Update sparkle particles
+    updateSparkles(delta)
   }
 
   return {
     group,
     update,
     triggerPanic,
-    getKois: () => kois.map(k => k.group)
+    attractToBread,
+    getKoiUnderPosition,
+    startCapture,
+    updateCapture,
+    cancelCapture,
+    getKois: () => kois.filter(k => !k.state.captured).map(k => k.group)
   }
 }

@@ -4,38 +4,54 @@ import * as THREE from 'three'
 export function createOllie(scene, gradientMap) {
   const group = new THREE.Group()
 
-  // Color palette - purple theme
-  const bodyColor = 0x7b4b94 // Deep purple
-  const bellyColor = 0xb89bc9 // Lighter lavender
-  const suckerColor = 0xd4a5c9 // Pink-ish
-  const glassRimColor = 0xd4af37 // Gold
+  // Store gradientMap for accessory creation
+  const storedGradientMap = gradientMap
 
-  // Materials
+  // Default colors - purple theme
+  const defaultColors = {
+    body: 0x7b4b94,
+    belly: 0xb89bc9,
+    suckers: 0xd4a5c9,
+    magRim: 0xd4af37,
+    magGlass: 0x88ccff
+  }
+
+  // Materials (stored for outfit swapping)
   const bodyMaterial = new THREE.MeshToonMaterial({
-    color: bodyColor,
+    color: defaultColors.body,
     gradientMap: gradientMap
   })
 
   const bellyMaterial = new THREE.MeshToonMaterial({
-    color: bellyColor,
+    color: defaultColors.belly,
     gradientMap: gradientMap
   })
 
   const suckerMaterial = new THREE.MeshToonMaterial({
-    color: suckerColor,
+    color: defaultColors.suckers,
     gradientMap: gradientMap
   })
 
   const glassRimMaterial = new THREE.MeshToonMaterial({
-    color: glassRimColor,
+    color: defaultColors.magRim,
     gradientMap: gradientMap
   })
 
   const glassMaterial = new THREE.MeshBasicMaterial({
-    color: 0x88ccff,
+    color: defaultColors.magGlass,
     transparent: true,
     opacity: 0.3
   })
+
+  // Accessory tracking
+  const accessories = {
+    head: null
+  }
+
+  // Mount points
+  const mountPoints = {
+    head: new THREE.Vector3(0, 0.95, 0)
+  }
 
   // Head/Mantle - bulbous dome
   const mantleGeom = new THREE.SphereGeometry(0.5, 10, 8)
@@ -169,8 +185,16 @@ export function createOllie(scene, gradientMap) {
     timer: 45 + Math.random() * 30, // First appearance in 45-75 seconds (after narwhal)
     emergeX: 0,
     emergeZ: 0,
-    surfaceTime: 0
+    surfaceTime: 0,
+    // Shop state
+    shopMode: false,
+    shopCooldown: 0,
+    onShopReady: null
   }
+
+  // Shop trigger thresholds
+  const SHOP_KOI_THRESHOLD = 10 // Second shop unlocks after Donny
+  const SHOP_COOLDOWN = 45 // seconds between shop approaches
 
   function createTentacle(bodyMat, suckerMat, gradient) {
     // Build tentacle as a chain of segments, each one a child of the previous
@@ -229,15 +253,47 @@ export function createOllie(scene, gradientMap) {
     state.mode = 'rumbling'
     state.timer = 0
 
-    // Pick random spot in outer zone of pond (70-90% radius)
-    const angle = Math.random() * Math.PI * 2
-    const dist = Math.random() * pond.radius * 0.2 + pond.radius * 0.7
-    state.emergeX = Math.cos(angle) * dist
-    state.emergeZ = Math.sin(angle) * dist
+    // Pick random spot in outer zone of pond (70-90% radius), avoiding forbidden zones
+    let attempts = 0
+    let angle, dist
+    do {
+      angle = Math.random() * Math.PI * 2
+      dist = Math.random() * pond.radius * 0.2 + pond.radius * 0.7
+      state.emergeX = Math.cos(angle) * dist
+      state.emergeZ = Math.sin(angle) * dist
+      attempts++
+    } while (!pond.isValidEmergenceSpot(state.emergeX, state.emergeZ) && attempts < 20)
 
     group.position.x = state.emergeX
     group.position.z = state.emergeZ
     group.rotation.y = angle + Math.PI / 2
+  }
+
+  function startShopApproach(pond, doug) {
+    state.mode = 'shop_approaching'
+    state.shopMode = true
+    state.timer = 0
+
+    // Emerge near Doug
+    const dougPos = doug.getPosition()
+    const approachAngle = Math.random() * Math.PI * 2
+    const approachDist = 1.5
+
+    state.emergeX = dougPos.x + Math.cos(approachAngle) * approachDist
+    state.emergeZ = dougPos.z + Math.sin(approachAngle) * approachDist
+
+    // Clamp to pond bounds
+    const distFromCenter = Math.hypot(state.emergeX, state.emergeZ)
+    if (distFromCenter > pond.radius * 0.85) {
+      const scale = (pond.radius * 0.85) / distFromCenter
+      state.emergeX *= scale
+      state.emergeZ *= scale
+    }
+
+    group.position.x = state.emergeX
+    group.position.z = state.emergeZ
+    group.visible = true
+    group.position.y = -2
   }
 
   // Helper to smoothly interpolate angles
@@ -378,11 +434,260 @@ export function createOllie(scene, gradientMap) {
           group.rotation.z = 0
         }
         break
+
+      case 'shop_approaching':
+        // Rise from water for shop
+        const shopEmergeProgress = Math.min(state.timer / 1.5, 1)
+        const shopEaseOut = 1 - Math.pow(1 - shopEmergeProgress, 3)
+        group.position.y = -2 + shopEaseOut * 2.2
+
+        // Face Doug
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.8)
+
+        // Animate tentacles during emergence
+        tentacles.forEach((t, i) => {
+          const baseAngle = (i / 8) * Math.PI * 2
+          const phase = i * (Math.PI / 4)
+          t.rotation.y = baseAngle + Math.sin(elapsed * 1.5 + phase) * 0.12
+          t.rotation.x = Math.sin(elapsed * 2 + phase) * 0.08
+        })
+
+        if (shopEmergeProgress >= 1) {
+          state.mode = 'shop_ready'
+          state.timer = 0
+          if (state.onShopReady) {
+            state.onShopReady('ollie')
+          }
+        }
+        break
+
+      case 'shop_ready':
+        // Bob gently while shop is open
+        group.position.y = 0.2 + Math.sin(elapsed * 2) * 0.05
+        group.rotation.y = lerpAngle(group.rotation.y, angleToDoug, delta * 0.4)
+        group.rotation.x = Math.sin(elapsed * 1.2) * 0.03
+        group.rotation.z = Math.cos(elapsed * 1.0) * 0.02
+
+        // Follow Doug while talking - Ollie is eager and curious!
+        if (doug) {
+          const dougPos = doug.getPosition()
+          const dx = dougPos.x - group.position.x
+          const dz = dougPos.z - group.position.z
+          const distToDoug = Math.hypot(dx, dz)
+          const minDist = 0.8 // Ollie gets closer (curious!)
+
+          if (distToDoug > minDist) {
+            // Swim toward Doug - faster when farther, Ollie is eager!
+            const approachSpeed = Math.min(distToDoug * 0.6, 1.8) * delta
+            group.position.x += (dx / distToDoug) * approachSpeed
+            group.position.z += (dz / distToDoug) * approachSpeed
+
+            // Clamp to pond bounds
+            const distFromCenter = Math.hypot(group.position.x, group.position.z)
+            if (distFromCenter > pond.radius * 0.85) {
+              const scale = (pond.radius * 0.85) / distFromCenter
+              group.position.x *= scale
+              group.position.z *= scale
+            }
+          }
+        }
+
+        // Tentacle animation
+        tentacles.forEach((t, i) => {
+          const baseAngle = (i / 8) * Math.PI * 2
+          const phase = i * (Math.PI / 4)
+          t.rotation.y = baseAngle + Math.sin(elapsed * 1.5 + phase) * 0.12
+          t.rotation.x = Math.sin(elapsed * 2 + phase) * 0.08
+        })
+
+        // Magnifying glass wobble
+        magGlassGroup.rotation.z = Math.sin(elapsed * 3) * 0.1
+        magGlassGroup.rotation.y = Math.sin(elapsed * 2) * 0.15
+
+        // Occasional ripples
+        if (Math.random() < delta * 0.4) {
+          pond.addRipple(
+            group.position.x + (Math.random() - 0.5) * 0.6,
+            group.position.z + (Math.random() - 0.5) * 0.6
+          )
+        }
+        break
+
+      case 'shop_departing':
+        const shopSubmergeProgress = Math.min(state.timer / 1.5, 1)
+        const shopEaseIn = Math.pow(shopSubmergeProgress, 2)
+        group.position.y = 0.2 - shopEaseIn * 2.5
+
+        // Tentacles curl as departing
+        tentacles.forEach((t, i) => {
+          const baseAngle = (i / 8) * Math.PI * 2
+          const phase = i * (Math.PI / 4)
+          t.rotation.y = baseAngle + Math.sin(elapsed * 2 + phase) * 0.05
+          t.rotation.x = shopEaseIn * 0.4 + Math.sin(elapsed * 2 + phase) * 0.05
+        })
+
+        if (Math.random() < delta * 5) {
+          pond.addRipple(
+            group.position.x + (Math.random() - 0.5) * 0.8,
+            group.position.z + (Math.random() - 0.5) * 0.8
+          )
+        }
+
+        if (shopSubmergeProgress >= 1) {
+          state.mode = 'waiting'
+          state.timer = 0
+          state.shopMode = false
+          state.shopCooldown = SHOP_COOLDOWN
+          group.visible = false
+          group.position.y = -3
+          group.rotation.x = 0
+          group.rotation.z = 0
+        }
+        break
     }
+
+    // Decrement shop cooldown
+    if (state.shopCooldown > 0) {
+      state.shopCooldown -= delta
+    }
+  }
+
+  // Try to trigger shop approach
+  function tryTriggerShop(koiCount, pond, doug) {
+    if (state.shopCooldown > 0) return false
+    if (koiCount < SHOP_KOI_THRESHOLD) return false
+
+    // If waiting, do full approach sequence
+    if (state.mode === 'waiting') {
+      startShopApproach(pond, doug)
+      return true
+    }
+
+    // If already surfaced, transition directly to shop mode
+    if (state.mode === 'surfaced') {
+      state.mode = 'shop_ready'
+      state.shopMode = true
+      state.timer = 0
+      if (state.onShopReady) {
+        state.onShopReady('ollie')
+      }
+      return true
+    }
+
+    return false
+  }
+
+  // Dismiss shop and start departing
+  function dismissShop() {
+    if (state.mode === 'shop_ready') {
+      state.mode = 'shop_departing'
+      state.timer = 0
+    }
+  }
+
+  // Set callback for when shop is ready
+  function setShopReadyCallback(callback) {
+    state.onShopReady = callback
+  }
+
+  // Check if in shop mode
+  function isInShopMode() {
+    return state.shopMode
+  }
+
+  // Apply an outfit to Ollie
+  function applyOutfit(outfit) {
+    if (!outfit) return
+
+    switch (outfit.type) {
+      case 'color_body':
+        if (outfit.colors) {
+          if (outfit.colors.body) bodyMaterial.color.setHex(outfit.colors.body)
+          if (outfit.colors.belly) bellyMaterial.color.setHex(outfit.colors.belly)
+          if (outfit.colors.suckers) suckerMaterial.color.setHex(outfit.colors.suckers)
+        }
+        break
+
+      case 'accessory_held':
+        // Magnifying glass color swap
+        if (outfit.colors) {
+          if (outfit.colors.rim) glassRimMaterial.color.setHex(outfit.colors.rim)
+          if (outfit.colors.glass) glassMaterial.color.setHex(outfit.colors.glass)
+        }
+        break
+
+      case 'accessory_head':
+        // Remove existing head accessory
+        if (accessories.head) {
+          group.remove(accessories.head)
+          accessories.head = null
+        }
+        // Add new accessory
+        if (outfit.meshFactory) {
+          accessories.head = outfit.meshFactory(storedGradientMap)
+          accessories.head.position.copy(mountPoints.head)
+          group.add(accessories.head)
+        }
+        break
+    }
+  }
+
+  // Remove an outfit from Ollie
+  function removeOutfit(outfit) {
+    if (!outfit) return
+
+    switch (outfit.type) {
+      case 'color_body':
+        bodyMaterial.color.setHex(defaultColors.body)
+        bellyMaterial.color.setHex(defaultColors.belly)
+        suckerMaterial.color.setHex(defaultColors.suckers)
+        break
+
+      case 'accessory_held':
+        glassRimMaterial.color.setHex(defaultColors.magRim)
+        glassMaterial.color.setHex(defaultColors.magGlass)
+        break
+
+      case 'accessory_head':
+        if (accessories.head) {
+          group.remove(accessories.head)
+          accessories.head = null
+        }
+        break
+    }
+  }
+
+  // Check if Ollie can be tapped to open shop
+  function isTappable() {
+    // Tappable when visible and surfaced (not emerging/submerging)
+    return group.visible && (state.mode === 'surfaced' || state.mode === 'shop_ready')
+  }
+
+  // Manually trigger shop (for tap-to-shop feature)
+  function triggerShopFromTap(pond, doug) {
+    if (state.mode === 'surfaced') {
+      // Already surfaced - transition to shop mode
+      state.mode = 'shop_ready'
+      state.shopMode = true
+      state.timer = 0
+      if (state.onShopReady) {
+        state.onShopReady('ollie')
+      }
+      return true
+    }
+    return false
   }
 
   return {
     group,
-    update
+    update,
+    tryTriggerShop,
+    dismissShop,
+    setShopReadyCallback,
+    isInShopMode,
+    isTappable,
+    triggerShopFromTap,
+    applyOutfit,
+    removeOutfit
   }
 }
