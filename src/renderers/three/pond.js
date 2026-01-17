@@ -746,12 +746,15 @@ export function createPond(scene, gradientMap) {
   // Snap zones for building placement
   // Each zone has: id, position, angle (rotation), type, allowed buildings, occupied status
   const snapZones = [
-    // Water edge zones (for docks, fishing huts)
+    // Water edge zones (for docks, fishing huts) - all around the pond
     { id: 'water_n', x: 0, z: -4.3, angle: Math.PI, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
     { id: 'water_ne', x: 3.0, z: -3.0, angle: Math.PI * 0.75, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
     { id: 'water_e', x: 4.3, z: 0, angle: Math.PI * 0.5, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
     { id: 'water_se', x: 3.0, z: 3.0, angle: Math.PI * 0.25, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
     { id: 'water_s', x: 0, z: 4.3, angle: 0, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_sw', x: -3.0, z: 3.0, angle: -Math.PI * 0.25, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_w', x: -4.3, z: 0, angle: -Math.PI * 0.5, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
+    { id: 'water_nw', x: -3.0, z: -3.0, angle: -Math.PI * 0.75, type: 'waterEdge', allowedBuildings: ['dock_wooden', 'fishing_hut', 'reeds'], occupied: false },
 
     // Shore zones (for lighthouse, fence, onion house) - further from water
     { id: 'shore_n', x: 0, z: -5.5, angle: Math.PI, type: 'shore', allowedBuildings: ['lighthouse', 'fence', 'onion_house'], occupied: false },

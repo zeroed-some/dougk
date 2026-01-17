@@ -39,7 +39,7 @@ export class PlacementManager {
 
     // Building forbidden radius (for creature emergence)
     this.buildingRadius = {
-      dock_wooden: 0.8,
+      dock_wooden: 1.0,
       fishing_hut: 0.9,
       lighthouse: 0.5,
       reeds: 0.4,
