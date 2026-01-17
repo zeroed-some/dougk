@@ -34,7 +34,8 @@ export function createDoug(scene, gradientMap) {
   // Accessory tracking
   const accessories = {
     head: null,
-    face: null
+    face: null,
+    clothing: null
   }
 
   // Mount points for accessories
@@ -501,6 +502,20 @@ export function createDoug(scene, gradientMap) {
           group.add(accessories.face)
         }
         break
+
+      case 'clothing_body':
+        // Remove existing clothing
+        if (accessories.clothing) {
+          group.remove(accessories.clothing)
+          accessories.clothing = null
+        }
+        // Add new clothing
+        if (outfit.meshFactory) {
+          accessories.clothing = outfit.meshFactory(storedGradientMap)
+          // Clothing is positioned relative to body origin
+          group.add(accessories.clothing)
+        }
+        break
     }
   }
 
@@ -529,6 +544,13 @@ export function createDoug(scene, gradientMap) {
         if (accessories.face) {
           group.remove(accessories.face)
           accessories.face = null
+        }
+        break
+
+      case 'clothing_body':
+        if (accessories.clothing) {
+          group.remove(accessories.clothing)
+          accessories.clothing = null
         }
         break
     }

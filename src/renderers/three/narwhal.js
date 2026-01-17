@@ -44,7 +44,8 @@ export function createDonny(scene, gradientMap) {
 
   // Accessory tracking
   const accessories = {
-    head: null
+    head: null,
+    clothing: null
   }
 
   // Mount points
@@ -544,6 +545,20 @@ export function createDonny(scene, gradientMap) {
           group.add(accessories.head)
         }
         break
+
+      case 'clothing_body':
+        // Remove existing clothing
+        if (accessories.clothing) {
+          group.remove(accessories.clothing)
+          accessories.clothing = null
+        }
+        // Add new clothing
+        if (outfit.meshFactory) {
+          accessories.clothing = outfit.meshFactory(storedGradientMap)
+          // Clothing is positioned relative to body origin
+          group.add(accessories.clothing)
+        }
+        break
     }
   }
 
@@ -566,6 +581,13 @@ export function createDonny(scene, gradientMap) {
         if (accessories.head) {
           group.remove(accessories.head)
           accessories.head = null
+        }
+        break
+
+      case 'clothing_body':
+        if (accessories.clothing) {
+          group.remove(accessories.clothing)
+          accessories.clothing = null
         }
         break
     }
