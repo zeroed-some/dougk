@@ -454,6 +454,15 @@ export function createDoug(scene, gradientMap) {
     if (state.mode !== 'waiting') {
       head.position.y = 0.7 + Math.sin(elapsed * 2) * 0.02
     }
+
+    // Animate head accessories (propeller beanie, etc.)
+    if (accessories.head) {
+      accessories.head.traverse((child) => {
+        if (child.userData.isPropeller) {
+          child.rotation.y = elapsed * 8  // Fast spin!
+        }
+      })
+    }
   }
 
   // Apply an outfit to Doug
