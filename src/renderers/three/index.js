@@ -158,6 +158,7 @@ export function start(container) {
   koiSchool = createKoiSchool(scene, toonGradient, pond.radius)
   ollie = createOllie(scene, toonGradient)
   placementManager = new PlacementManager(scene, pond, camera, toonGradient)
+  placementManager.initForbiddenZones(pond.getInitialForbiddenZones())
 
   // Post-processing
   composer = new EffectComposer(renderer)

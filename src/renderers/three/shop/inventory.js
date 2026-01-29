@@ -6,7 +6,8 @@ import { getItem } from './items.js'
 const STORAGE_KEYS = {
   OWNED: 'dougk-owned-items',
   EQUIPPED: 'dougk-equipped',
-  BUILDINGS: 'dougk-buildings'
+  BUILDINGS: 'dougk-buildings',
+  BUILDINGS_FREEFORM: 'dougk-buildings-freeform'
 }
 
 function loadJSON(key, defaultValue) {
@@ -33,8 +34,11 @@ const inventory = {
     ollie: []
   }),
 
-  // Placed buildings
+  // Placed buildings (legacy zone-based format)
   buildings: loadJSON(STORAGE_KEYS.BUILDINGS, []),
+
+  // Placed buildings (new freeform format with coordinates)
+  buildingsFreeform: loadJSON(STORAGE_KEYS.BUILDINGS_FREEFORM, []),
 
   // Check if an item is owned
   owns(itemId) {
@@ -133,11 +137,37 @@ const inventory = {
     return false
   },
 
+  // === Freeform placement methods (new system) ===
+
+  // Place a building with freeform coordinates
+  placeBuildingFreeform(data) {
+    // data: { type, x, z, rotation, placementId }
+    this.buildingsFreeform.push(data)
+    this.save()
+  },
+
+  // Get all freeform placed buildings
+  getPlacedBuildingsFreeform() {
+    return [...this.buildingsFreeform]
+  },
+
+  // Remove a freeform building by placement ID
+  removeBuildingFreeform(placementId) {
+    const index = this.buildingsFreeform.findIndex(b => b.placementId === placementId)
+    if (index !== -1) {
+      this.buildingsFreeform.splice(index, 1)
+      this.save()
+      return true
+    }
+    return false
+  },
+
   // Save all state
   save() {
     saveJSON(STORAGE_KEYS.OWNED, this.ownedItems)
     saveJSON(STORAGE_KEYS.EQUIPPED, this.equipped)
     saveJSON(STORAGE_KEYS.BUILDINGS, this.buildings)
+    saveJSON(STORAGE_KEYS.BUILDINGS_FREEFORM, this.buildingsFreeform)
   },
 
   // Clear all data (for testing)
@@ -145,6 +175,7 @@ const inventory = {
     this.ownedItems = []
     this.equipped = { doug: [], donny: [], ollie: [] }
     this.buildings = []
+    this.buildingsFreeform = []
     this.save()
   }
 }

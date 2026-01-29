@@ -743,6 +743,12 @@ export function createPond(scene, gradientMap) {
     forbiddenZones.push({ x, z, radius: zoneRadius })
   }
 
+  // Get initial forbidden zones (for building placement)
+  function getInitialForbiddenZones() {
+    // Return copy of initial zones (rowboat and dock area)
+    return forbiddenZones.slice(0, 2).map(z => ({ ...z }))
+  }
+
   // Snap zones for building placement
   // Each zone has: id, position, angle (rotation), type, allowed buildings, occupied status
   const snapZones = [
@@ -817,6 +823,7 @@ export function createPond(scene, gradientMap) {
     update,
     isValidEmergenceSpot,
     addForbiddenZone,
+    getInitialForbiddenZones,
     snapZones,
     getAvailableZones,
     getZone,
