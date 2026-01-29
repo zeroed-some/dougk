@@ -56,7 +56,7 @@ const inventory = {
   },
 
   // Equip an outfit to a character
-  // Automatically unequips any other outfit of the same type
+  // Automatically unequips any other outfit of the same type or conflicting types
   equip(character, itemId) {
     if (!this.equipped[character]) {
       this.equipped[character] = []
@@ -66,14 +66,25 @@ const inventory = {
     const newItem = getItem(itemId)
     if (!newItem) return
 
-    // Find and unequip any item of the same type
-    const sameTypeItems = this.equipped[character].filter(equippedId => {
+    // Build list of types to unequip: same type + any conflicting types
+    const typesToUnequip = [newItem.type]
+    if (newItem.conflictsWith && Array.isArray(newItem.conflictsWith)) {
+      typesToUnequip.push(...newItem.conflictsWith)
+    }
+
+    // Find and unequip any item of conflicting types
+    const conflictingItems = this.equipped[character].filter(equippedId => {
       const equippedItem = getItem(equippedId)
-      return equippedItem && equippedItem.type === newItem.type
+      if (!equippedItem) return false
+      // Check if equipped item's type is in our unequip list
+      if (typesToUnequip.includes(equippedItem.type)) return true
+      // Also check if the equipped item conflicts with our new item's type
+      if (equippedItem.conflictsWith && equippedItem.conflictsWith.includes(newItem.type)) return true
+      return false
     })
 
-    // Remove items of the same type
-    for (const oldId of sameTypeItems) {
+    // Remove conflicting items
+    for (const oldId of conflictingItems) {
       this.equipped[character] = this.equipped[character].filter(id => id !== oldId)
     }
 
@@ -84,7 +95,7 @@ const inventory = {
     this.save()
 
     // Return the unequipped items so the caller can update visuals
-    return sameTypeItems
+    return conflictingItems
   },
 
   // Unequip an outfit from a character
