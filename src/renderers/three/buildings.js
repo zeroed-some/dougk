@@ -578,109 +578,198 @@ export function createBootHouse(gradientMap) {
   // Sprite body colors
   const spriteColors = [0xff6b9d, 0x9b59b6, 0x3498db, 0x2ecc71]
 
-  // === BOOT STRUCTURE ===
+  // === BOOT STRUCTURE (Continuous realistic boot shape) ===
 
-  // Boot sole (the base)
-  const soleGeom = new THREE.BoxGeometry(1.0, 0.12, 0.6)
-  soleGeom.translate(0.1, 0, 0) // Offset for toe curve
-  const sole = new THREE.Mesh(soleGeom, soleMaterial)
-  sole.position.y = 0.06
-  group.add(sole)
+  // The boot is built as overlapping shapes with the same material
+  // to create a seamless, continuous appearance
 
-  // Toe section - curved front of boot (rounded box)
-  const toeGeom = new THREE.SphereGeometry(0.35, 10, 8)
-  toeGeom.scale(1.2, 0.7, 1.0)
-  const toe = new THREE.Mesh(toeGeom, leatherMaterial)
-  toe.position.set(-0.35, 0.25, 0)
-  group.add(toe)
+  // --- SOLE (follows the boot footprint) ---
+  // Main sole - elongated with rounded ends
+  const soleLength = 1.1
+  const soleWidth = 0.5
+  const soleHeight = 0.1
 
-  // Main boot body (the ankle/shaft part) - this is the house
-  const shaftGeom = new THREE.CylinderGeometry(0.32, 0.38, 0.9, 10)
+  // Sole base
+  const soleBaseGeom = new THREE.BoxGeometry(soleLength - 0.3, soleHeight, soleWidth - 0.1)
+  const soleBase = new THREE.Mesh(soleBaseGeom, soleMaterial)
+  soleBase.position.set(0, soleHeight / 2, 0)
+  group.add(soleBase)
+
+  // Sole toe cap (rounded front)
+  const soleToeGeom = new THREE.CylinderGeometry(soleWidth / 2 - 0.05, soleWidth / 2 - 0.05, soleHeight, 12)
+  soleToeGeom.rotateX(Math.PI / 2)
+  const soleToe = new THREE.Mesh(soleToeGeom, soleMaterial)
+  soleToe.position.set(-soleLength / 2 + 0.15, soleHeight / 2, 0)
+  group.add(soleToe)
+
+  // Sole heel cap (rounded back)
+  const soleHeelGeom = new THREE.CylinderGeometry(soleWidth / 2 - 0.05, soleWidth / 2 - 0.05, soleHeight * 1.3, 12)
+  soleHeelGeom.rotateX(Math.PI / 2)
+  const soleHeel = new THREE.Mesh(soleHeelGeom, soleMaterial)
+  soleHeel.position.set(soleLength / 2 - 0.2, soleHeight * 0.65, 0)
+  group.add(soleHeel)
+
+  // --- FOOT PORTION (continuous with ankle) ---
+
+  // Lower foot - the part that sits on the sole
+  // Uses a squashed capsule shape tilted up at the toe
+  const footBaseGeom = new THREE.CapsuleGeometry(0.22, 0.5, 8, 12)
+  footBaseGeom.rotateZ(Math.PI / 2) // Lay it horizontal
+  footBaseGeom.scale(1, 0.75, 1) // Flatten slightly
+  const footBase = new THREE.Mesh(footBaseGeom, leatherMaterial)
+  footBase.position.set(-0.1, 0.28, 0)
+  footBase.rotation.z = -0.15 // Tilt toe up slightly
+  group.add(footBase)
+
+  // Toe box - rounded front that curves upward
+  const toeBoxGeom = new THREE.SphereGeometry(0.28, 12, 10)
+  toeBoxGeom.scale(0.9, 0.85, 1.0)
+  const toeBox = new THREE.Mesh(toeBoxGeom, leatherMaterial)
+  toeBox.position.set(-0.48, 0.26, 0)
+  group.add(toeBox)
+
+  // --- ANKLE/SHAFT (rises from heel, connects to foot) ---
+
+  // Ankle transition - connects foot to shaft smoothly
+  const ankleTransitionGeom = new THREE.SphereGeometry(0.34, 12, 10)
+  ankleTransitionGeom.scale(1.0, 0.8, 1.0)
+  const ankleTransition = new THREE.Mesh(ankleTransitionGeom, leatherMaterial)
+  ankleTransition.position.set(0.25, 0.35, 0)
+  group.add(ankleTransition)
+
+  // Main shaft (ankle part) - tapers slightly upward
+  const shaftGeom = new THREE.CylinderGeometry(0.28, 0.34, 0.75, 14)
   const shaft = new THREE.Mesh(shaftGeom, leatherMaterial)
-  shaft.position.set(0.25, 0.6, 0)
+  shaft.position.set(0.25, 0.72, 0)
   group.add(shaft)
 
-  // Boot rim/collar at top
-  const rimGeom = new THREE.TorusGeometry(0.34, 0.05, 6, 16)
-  const rim = new THREE.Mesh(rimGeom, darkLeatherMaterial)
-  rim.position.set(0.25, 1.05, 0)
-  rim.rotation.x = Math.PI / 2
-  group.add(rim)
+  // Shaft top rim
+  const shaftTopGeom = new THREE.TorusGeometry(0.30, 0.04, 8, 20)
+  const shaftTop = new THREE.Mesh(shaftTopGeom, leatherMaterial)
+  shaftTop.position.set(0.25, 1.1, 0)
+  shaftTop.rotation.x = Math.PI / 2
+  group.add(shaftTop)
 
-  // Tongue (extending from shaft toward toe)
-  const tongueGeom = new THREE.BoxGeometry(0.18, 0.4, 0.08)
+  // --- INSTEP/VAMP (connects toe to ankle on top) ---
+
+  // This fills the gap between toe and shaft on top of the foot
+  const vampGeom = new THREE.CapsuleGeometry(0.18, 0.35, 6, 10)
+  vampGeom.rotateZ(Math.PI / 2)
+  vampGeom.scale(1, 0.7, 0.9)
+  const vamp = new THREE.Mesh(vampGeom, leatherMaterial)
+  vamp.position.set(-0.08, 0.38, 0)
+  vamp.rotation.z = -0.4 // Angle down toward toe
+  group.add(vamp)
+
+  // --- HEEL COUNTER (back of heel, reinforcement) ---
+  const heelCounterGeom = new THREE.CylinderGeometry(0.26, 0.3, 0.25, 14, 1, false, -Math.PI * 0.6, Math.PI * 1.2)
+  const heelCounter = new THREE.Mesh(heelCounterGeom, darkLeatherMaterial)
+  heelCounter.position.set(0.35, 0.22, 0)
+  group.add(heelCounter)
+
+  // --- TONGUE ---
+  const tongueGeom = new THREE.CapsuleGeometry(0.08, 0.25, 4, 8)
   const tongue = new THREE.Mesh(tongueGeom, laceMaterial)
-  tongue.position.set(0.05, 0.5, 0.32)
-  tongue.rotation.x = 0.3
+  tongue.position.set(0.0, 0.55, 0.26)
+  tongue.rotation.x = 0.35
+  tongue.rotation.z = -0.1
   group.add(tongue)
 
-  // Lace holes (decorative dots)
-  const holeGeom = new THREE.CylinderGeometry(0.025, 0.025, 0.02, 8)
-  for (let i = 0; i < 4; i++) {
-    const holeL = new THREE.Mesh(holeGeom, soleMaterial)
-    holeL.position.set(-0.05, 0.35 + i * 0.15, 0.36)
-    holeL.rotation.x = Math.PI / 2
-    group.add(holeL)
-
-    const holeR = new THREE.Mesh(holeGeom, soleMaterial)
-    holeR.position.set(0.15, 0.35 + i * 0.15, 0.36)
-    holeR.rotation.x = Math.PI / 2
-    group.add(holeR)
-  }
-
-  // Cross-laces between holes
+  // --- LACING DETAILS ---
   const laceCordMaterial = new THREE.MeshToonMaterial({
     color: 0xf5deb3,
     gradientMap
   })
+
+  // Lace eyelets (holes)
+  const eyeletGeom = new THREE.TorusGeometry(0.025, 0.008, 6, 12)
+  for (let i = 0; i < 4; i++) {
+    const y = 0.42 + i * 0.12
+    const z = 0.28 - i * 0.02
+
+    const eyeletL = new THREE.Mesh(eyeletGeom, darkLeatherMaterial)
+    eyeletL.position.set(-0.06, y, z)
+    eyeletL.rotation.x = Math.PI / 2 - 0.3
+    group.add(eyeletL)
+
+    const eyeletR = new THREE.Mesh(eyeletGeom, darkLeatherMaterial)
+    eyeletR.position.set(0.08, y, z)
+    eyeletR.rotation.x = Math.PI / 2 - 0.3
+    group.add(eyeletR)
+  }
+
+  // Cross-laces
   for (let i = 0; i < 3; i++) {
-    const cordGeom = new THREE.CylinderGeometry(0.01, 0.01, 0.22, 4)
+    const y = 0.48 + i * 0.12
+    const z = 0.30 - i * 0.02
+    const cordGeom = new THREE.CylinderGeometry(0.008, 0.008, 0.16, 4)
     const cord = new THREE.Mesh(cordGeom, laceCordMaterial)
-    cord.position.set(0.05, 0.42 + i * 0.15, 0.37)
+    cord.position.set(0.01, y, z)
     cord.rotation.z = Math.PI / 2
-    cord.rotation.x = 0.3
+    cord.rotation.y = 0.3
     group.add(cord)
   }
 
-  // Heel bump
-  const heelGeom = new THREE.SphereGeometry(0.18, 8, 6)
-  heelGeom.scale(1.0, 0.8, 0.6)
-  const heel = new THREE.Mesh(heelGeom, soleMaterial)
-  heel.position.set(0.55, 0.1, 0)
-  group.add(heel)
+  // Bow at top of lacing
+  const bowLoopGeom = new THREE.TorusGeometry(0.04, 0.012, 6, 12, Math.PI)
+  const bowL = new THREE.Mesh(bowLoopGeom, laceCordMaterial)
+  bowL.position.set(-0.04, 0.82, 0.24)
+  bowL.rotation.y = Math.PI / 2
+  bowL.rotation.x = 0.5
+  group.add(bowL)
+
+  const bowR = new THREE.Mesh(bowLoopGeom, laceCordMaterial)
+  bowR.position.set(0.06, 0.82, 0.24)
+  bowR.rotation.y = -Math.PI / 2
+  bowR.rotation.x = 0.5
+  group.add(bowR)
+
+  // Bow tails
+  const tailGeom = new THREE.CylinderGeometry(0.01, 0.006, 0.12, 4)
+  const tailL = new THREE.Mesh(tailGeom, laceCordMaterial)
+  tailL.position.set(-0.06, 0.76, 0.26)
+  tailL.rotation.z = 0.4
+  tailL.rotation.x = 0.3
+  group.add(tailL)
+
+  const tailR = new THREE.Mesh(tailGeom, laceCordMaterial)
+  tailR.position.set(0.08, 0.76, 0.26)
+  tailR.rotation.z = -0.4
+  tailR.rotation.x = 0.3
+  group.add(tailR)
 
   // === WINDOWS ===
 
   // Round window on toe
-  const toeWindowGeom = new THREE.CircleGeometry(0.08, 10)
+  const toeWindowGeom = new THREE.CircleGeometry(0.07, 12)
   const toeWindow = new THREE.Mesh(toeWindowGeom, windowMaterial)
-  toeWindow.position.set(-0.58, 0.3, 0)
+  toeWindow.position.set(-0.72, 0.28, 0)
   toeWindow.rotation.y = -Math.PI / 2
   group.add(toeWindow)
 
   // Window frame
-  const toeFrameGeom = new THREE.TorusGeometry(0.08, 0.015, 4, 16)
+  const toeFrameGeom = new THREE.TorusGeometry(0.07, 0.012, 4, 16)
   const toeFrame = new THREE.Mesh(toeFrameGeom, darkLeatherMaterial)
-  toeFrame.position.set(-0.57, 0.3, 0)
+  toeFrame.position.set(-0.71, 0.28, 0)
   toeFrame.rotation.y = -Math.PI / 2
   group.add(toeFrame)
 
-  // Windows on shaft (2 small ones)
+  // Windows on shaft (2 on sides)
   for (let i = 0; i < 2; i++) {
-    const angle = (i === 0) ? Math.PI * 0.7 : -Math.PI * 0.7
-    const wx = 0.25 + Math.sin(angle) * 0.33
-    const wz = Math.cos(angle) * 0.33
+    const angle = (i === 0) ? Math.PI * 0.65 : -Math.PI * 0.65
+    const wx = 0.25 + Math.sin(angle) * 0.29
+    const wz = Math.cos(angle) * 0.29
 
-    const shaftWindowGeom = new THREE.PlaneGeometry(0.12, 0.15)
+    const shaftWindowGeom = new THREE.CircleGeometry(0.06, 10)
     const shaftWindow = new THREE.Mesh(shaftWindowGeom, windowMaterial)
-    shaftWindow.position.set(wx, 0.6, wz)
+    shaftWindow.position.set(wx, 0.7, wz)
     shaftWindow.rotation.y = angle + Math.PI
     group.add(shaftWindow)
 
     // Frame
-    const frameGeom = new THREE.BoxGeometry(0.14, 0.17, 0.02)
+    const frameGeom = new THREE.TorusGeometry(0.06, 0.01, 4, 12)
     const frame = new THREE.Mesh(frameGeom, darkLeatherMaterial)
-    frame.position.set(wx, 0.6, wz)
+    frame.position.set(wx, 0.7, wz)
     frame.rotation.y = angle + Math.PI
     group.add(frame)
   }
@@ -743,34 +832,36 @@ export function createBootHouse(gradientMap) {
   }
   chimneyGroup.add(smokeGroup)
 
-  chimneyGroup.position.set(0.1, 1.0, -0.15)
+  chimneyGroup.position.set(0.15, 1.1, -0.12)
   group.add(chimneyGroup)
 
   // === DOOR ===
 
   const doorGroup = new THREE.Group()
 
-  // Arched door on the toe
-  const doorGeom = new THREE.BoxGeometry(0.15, 0.25, 0.03)
+  // Arched door on the side of the toe/vamp area
+  const doorGeom = new THREE.BoxGeometry(0.12, 0.22, 0.03)
   const door = new THREE.Mesh(doorGeom, darkLeatherMaterial)
-  door.position.y = 0.125
+  door.position.y = 0.11
   doorGroup.add(door)
 
   // Door arch
-  const doorArchGeom = new THREE.SphereGeometry(0.075, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)
+  const doorArchGeom = new THREE.SphereGeometry(0.06, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)
   const doorArch = new THREE.Mesh(doorArchGeom, darkLeatherMaterial)
-  doorArch.position.y = 0.25
+  doorArch.position.y = 0.22
   doorArch.rotation.x = Math.PI
   doorGroup.add(doorArch)
 
   // Door knob
-  const knobGeom = new THREE.SphereGeometry(0.018, 6, 4)
+  const knobGeom = new THREE.SphereGeometry(0.015, 6, 4)
   const knobMat = new THREE.MeshToonMaterial({ color: 0xffd700, gradientMap })
   const knob = new THREE.Mesh(knobGeom, knobMat)
-  knob.position.set(0.05, 0.12, 0.02)
+  knob.position.set(0.04, 0.1, 0.02)
   doorGroup.add(knob)
 
-  doorGroup.position.set(-0.25, 0.12, 0.35)
+  // Position door on the front-side of the boot
+  doorGroup.position.set(-0.32, 0.1, 0.22)
+  doorGroup.rotation.y = -0.4
   group.add(doorGroup)
 
   // === YARD WITH TALL GRASS PATCHES ===
@@ -780,12 +871,12 @@ export function createBootHouse(gradientMap) {
 
   // Create grass patches around the boot
   const grassPositions = [
-    { x: -0.7, z: 0.4, count: 8 },
-    { x: -0.6, z: -0.35, count: 6 },
-    { x: 0.7, z: 0.35, count: 7 },
-    { x: 0.65, z: -0.3, count: 5 },
-    { x: -0.1, z: -0.5, count: 6 },
-    { x: 0.4, z: 0.5, count: 5 }
+    { x: -0.8, z: 0.35, count: 8 },
+    { x: -0.75, z: -0.35, count: 6 },
+    { x: 0.7, z: 0.4, count: 7 },
+    { x: 0.75, z: -0.35, count: 5 },
+    { x: 0.0, z: -0.55, count: 6 },
+    { x: 0.0, z: 0.55, count: 5 }
   ]
 
   for (const patch of grassPositions) {
@@ -877,11 +968,11 @@ export function createBootHouse(gradientMap) {
     sprite.add(pupilR)
 
     // Animation data
-    sprite.userData.orbitRadius = 0.5 + Math.random() * 0.3
+    sprite.userData.orbitRadius = 0.6 + Math.random() * 0.25
     sprite.userData.orbitSpeed = 0.8 + Math.random() * 0.6
     sprite.userData.orbitPhase = (i / 4) * Math.PI * 2
     sprite.userData.bobPhase = Math.random() * Math.PI * 2
-    sprite.userData.orbitCenterX = 0.1 // Roughly center of boot
+    sprite.userData.orbitCenterX = 0.0 // Center of boot footprint
     sprite.userData.orbitCenterZ = 0
 
     // Initial position
