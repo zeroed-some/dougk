@@ -1561,3 +1561,8 @@ export function getAllBuildings() {
 export function getItem(itemId) {
   return OUTFITS[itemId] || BUILDINGS[itemId] || null
 }
+
+// Get all purchasable items (outfits + buildings)
+export function getAllItems() {
+  return [...Object.values(OUTFITS), ...Object.values(BUILDINGS)]
+}

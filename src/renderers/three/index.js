@@ -17,7 +17,7 @@ import { openShop, closeShop, isShopOpen } from './shop/shopUI.js'
 import { showDialog, closeDialog, isDialogOpen } from './shop/dialogUI.js'
 import { getDialogForCharacter, getReturnDialog } from './shop/dialogScripts.js'
 import inventory from './shop/inventory.js'
-import { getItem, CHARACTERS } from './shop/items.js'
+import { getItem, CHARACTERS, getAllItems } from './shop/items.js'
 
 let scene, camera, renderer, composer, outlinePass
 let doug, pond, breadManager, donny, koiSchool, ollie, placementManager
@@ -159,6 +159,9 @@ export function start(container) {
   ollie = createOllie(scene, toonGradient)
   placementManager = new PlacementManager(scene, pond, camera, toonGradient)
   placementManager.initForbiddenZones(pond.getInitialForbiddenZones())
+
+  // Initialize shop approach tracking (for smart creature behavior)
+  gameState.initShopTracking(getAllItems(), inventory)
 
   // Post-processing
   composer = new EffectComposer(renderer)

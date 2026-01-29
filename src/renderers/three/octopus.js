@@ -1,5 +1,6 @@
 // Ollie the Octopus - curious inspector of the pond
 import * as THREE from 'three'
+import gameState from './gameState.js'
 
 export function createOllie(scene, gradientMap) {
   const group = new THREE.Group()
@@ -554,13 +555,20 @@ export function createOllie(scene, gradientMap) {
   }
 
   // Try to trigger shop approach
+  // Only approaches Doug on first emergence or when player unlocked new affordable items
   function tryTriggerShop(koiCount, pond, doug) {
     if (state.shopCooldown > 0) return false
     if (koiCount < SHOP_KOI_THRESHOLD) return false
 
+    // Check if there's a reason to approach Doug
+    if (!gameState.shouldCreatureApproach('ollie')) {
+      return false
+    }
+
     // If waiting, do full approach sequence
     if (state.mode === 'waiting') {
       startShopApproach(pond, doug)
+      gameState.markApproachComplete('ollie')
       return true
     }
 
@@ -569,6 +577,7 @@ export function createOllie(scene, gradientMap) {
       state.mode = 'shop_ready'
       state.shopMode = true
       state.timer = 0
+      gameState.markApproachComplete('ollie')
       if (state.onShopReady) {
         state.onShopReady('ollie')
       }

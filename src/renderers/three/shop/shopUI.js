@@ -414,6 +414,8 @@ function attachOutfitListeners(content) {
       if (action === 'buy') {
         if (gameState.spendKoi(item.price)) {
           inventory.purchase(itemId)
+          // Recalculate affordable items after purchase
+          gameState.onPurchase()
           // Auto-equip after buying (this also unequips same-type items)
           const unequippedIds = inventory.equip(item.character, itemId)
           // Notify about unequipped items first
@@ -458,6 +460,8 @@ function attachBuildingListeners(content) {
       if (action === 'buy') {
         if (gameState.spendKoi(item.price)) {
           inventory.purchase(itemId)
+          // Recalculate affordable items after purchase
+          gameState.onPurchase()
           if (onPurchaseCallback) onPurchaseCallback(item)
           playPurchase()
           updateShopContent()

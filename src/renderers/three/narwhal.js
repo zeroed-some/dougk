@@ -1,5 +1,6 @@
 // Donny the Narwhal - distinguished gentleman of the deep
 import * as THREE from 'three'
+import gameState from './gameState.js'
 
 export function createDonny(scene, gradientMap) {
   const group = new THREE.Group()
@@ -470,13 +471,20 @@ export function createDonny(scene, gradientMap) {
   }
 
   // Try to trigger shop approach (called from main loop)
+  // Only approaches Doug on first emergence or when player unlocked new affordable items
   function tryTriggerShop(koiCount, pond, doug) {
     if (state.shopCooldown > 0) return false
     if (koiCount < SHOP_KOI_THRESHOLD) return false
 
+    // Check if there's a reason to approach Doug
+    if (!gameState.shouldCreatureApproach('donny')) {
+      return false
+    }
+
     // If waiting, do full approach sequence
     if (state.mode === 'waiting') {
       startShopApproach(pond, doug)
+      gameState.markApproachComplete('donny')
       return true
     }
 
@@ -485,6 +493,7 @@ export function createDonny(scene, gradientMap) {
       state.mode = 'shop_ready'
       state.shopMode = true
       state.timer = 0
+      gameState.markApproachComplete('donny')
       if (state.onShopReady) {
         state.onShopReady('donny')
       }
