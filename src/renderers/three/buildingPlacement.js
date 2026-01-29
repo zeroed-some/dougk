@@ -28,7 +28,8 @@ const BUILDING_TERRAIN = {
   lighthouse: [TERRAIN.SHORE],
   reeds: [TERRAIN.WATER, TERRAIN.WATER_EDGE],
   fence: [TERRAIN.SHORE],
-  onion_house: [TERRAIN.SHORE]
+  onion_house: [TERRAIN.SHORE],
+  boot_house: [TERRAIN.SHORE]
 }
 
 // Building collision radii (for overlap detection)
@@ -38,7 +39,8 @@ const BUILDING_COLLISION_RADIUS = {
   lighthouse: 0.5,
   reeds: 0.3,
   fence: 0.25,
-  onion_house: 0.5
+  onion_house: 0.5,
+  boot_house: 1.0
 }
 
 export class PlacementManager {
@@ -89,7 +91,8 @@ export class PlacementManager {
       lighthouse: 0.5,
       reeds: 0.4,
       fence: 0.3,
-      onion_house: 0.6
+      onion_house: 0.6,
+      boot_house: 1.2
     }
 
     // Placed building positions for collision detection
@@ -512,6 +515,71 @@ export class PlacementManager {
 
             child.position.x = Math.sin(elapsed * 0.8 + phase * 5) * 0.03
             child.position.z = Math.cos(elapsed * 0.6 + phase * 3) * 0.02
+          }
+        })
+      }
+
+      // Boot house animations
+      if (building.userData.buildingType === 'boot_house') {
+        building.traverse((child) => {
+          // Smoke puffs from chimney
+          if (child.userData.isSmokePuff) {
+            const phase = child.userData.phase
+            const cycleTime = 3.5
+            const t = ((elapsed * 0.4 + phase * cycleTime) % cycleTime) / cycleTime
+
+            child.position.y = t * 0.4
+            const scale = 1 + t * 1.0
+            child.scale.set(scale, scale, scale)
+
+            if (child.material) {
+              child.material.opacity = 0.5 * (1 - t * 0.85)
+            }
+
+            child.position.x += Math.sin(elapsed * 0.7 + phase * 4) * 0.001
+            child.position.z += Math.cos(elapsed * 0.5 + phase * 3) * 0.001
+          }
+
+          // Grass blade swaying
+          if (child.userData.isGrassBlade) {
+            const phase = child.userData.phase
+            const baseX = child.userData.baseRotX
+            const baseZ = child.userData.baseRotZ
+            child.rotation.x = baseX + Math.sin(elapsed * 1.8 + phase) * 0.12
+            child.rotation.z = baseZ + Math.cos(elapsed * 1.4 + phase) * 0.08
+          }
+
+          // Sprite running around the yard
+          if (child.userData.isBootSprite) {
+            const orbitRadius = child.userData.orbitRadius
+            const orbitSpeed = child.userData.orbitSpeed
+            const orbitPhase = child.userData.orbitPhase
+            const bobPhase = child.userData.bobPhase
+            const centerX = child.userData.orbitCenterX
+            const centerZ = child.userData.orbitCenterZ
+
+            // Orbit position
+            const angle = elapsed * orbitSpeed + orbitPhase
+            child.position.x = centerX + Math.cos(angle) * orbitRadius
+            child.position.z = centerZ + Math.sin(angle) * orbitRadius
+
+            // Bobbing up and down while running
+            child.position.y = Math.abs(Math.sin(elapsed * 8 + bobPhase)) * 0.02
+
+            // Face direction of movement
+            child.rotation.y = angle + Math.PI / 2
+
+            // Animate legs
+            child.traverse((part) => {
+              if (part.userData.isLeg) {
+                const legSwing = Math.sin(elapsed * 12 + bobPhase) * 0.4
+                if (part.userData.legSide === 'left') {
+                  part.rotation.x = legSwing
+                } else {
+                  part.rotation.x = -legSwing
+                }
+              }
+            })
           }
         })
       }

@@ -1536,6 +1536,14 @@ export const BUILDINGS = {
     price: 45,
     zoneType: 'shore',
     forbiddenRadius: 0.6
+  },
+  boot_house: {
+    id: 'boot_house',
+    buildingType: 'boot_house',
+    name: 'Boot House',
+    price: 100,
+    zoneType: 'shore',
+    forbiddenRadius: 1.2
   }
 }
 

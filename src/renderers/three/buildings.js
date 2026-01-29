@@ -528,6 +528,381 @@ export function createOnionHouse(gradientMap) {
   return group
 }
 
+// Create a whimsical boot house with yard, sprites, and bendy chimney
+export function createBootHouse(gradientMap) {
+  const group = new THREE.Group()
+
+  // Boot leather material - warm brown
+  const leatherMaterial = new THREE.MeshToonMaterial({
+    color: 0x8b4513,
+    gradientMap
+  })
+
+  // Darker leather for details
+  const darkLeatherMaterial = new THREE.MeshToonMaterial({
+    color: 0x5c3317,
+    gradientMap
+  })
+
+  // Sole material - darker rubber-like
+  const soleMaterial = new THREE.MeshToonMaterial({
+    color: 0x2d1f14,
+    gradientMap
+  })
+
+  // Lace/tongue material
+  const laceMaterial = new THREE.MeshToonMaterial({
+    color: 0xdaa520,
+    gradientMap
+  })
+
+  // Chimney brick
+  const brickMaterial = new THREE.MeshToonMaterial({
+    color: 0x8b4513,
+    gradientMap
+  })
+
+  // Window glow
+  const windowMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffcc,
+    transparent: true,
+    opacity: 0.8
+  })
+
+  // Grass material
+  const grassMaterial = new THREE.MeshToonMaterial({
+    color: 0x4a7c3f,
+    gradientMap
+  })
+
+  // Sprite body colors
+  const spriteColors = [0xff6b9d, 0x9b59b6, 0x3498db, 0x2ecc71]
+
+  // === BOOT STRUCTURE ===
+
+  // Boot sole (the base)
+  const soleGeom = new THREE.BoxGeometry(1.0, 0.12, 0.6)
+  soleGeom.translate(0.1, 0, 0) // Offset for toe curve
+  const sole = new THREE.Mesh(soleGeom, soleMaterial)
+  sole.position.y = 0.06
+  group.add(sole)
+
+  // Toe section - curved front of boot (rounded box)
+  const toeGeom = new THREE.SphereGeometry(0.35, 10, 8)
+  toeGeom.scale(1.2, 0.7, 1.0)
+  const toe = new THREE.Mesh(toeGeom, leatherMaterial)
+  toe.position.set(-0.35, 0.25, 0)
+  group.add(toe)
+
+  // Main boot body (the ankle/shaft part) - this is the house
+  const shaftGeom = new THREE.CylinderGeometry(0.32, 0.38, 0.9, 10)
+  const shaft = new THREE.Mesh(shaftGeom, leatherMaterial)
+  shaft.position.set(0.25, 0.6, 0)
+  group.add(shaft)
+
+  // Boot rim/collar at top
+  const rimGeom = new THREE.TorusGeometry(0.34, 0.05, 6, 16)
+  const rim = new THREE.Mesh(rimGeom, darkLeatherMaterial)
+  rim.position.set(0.25, 1.05, 0)
+  rim.rotation.x = Math.PI / 2
+  group.add(rim)
+
+  // Tongue (extending from shaft toward toe)
+  const tongueGeom = new THREE.BoxGeometry(0.18, 0.4, 0.08)
+  const tongue = new THREE.Mesh(tongueGeom, laceMaterial)
+  tongue.position.set(0.05, 0.5, 0.32)
+  tongue.rotation.x = 0.3
+  group.add(tongue)
+
+  // Lace holes (decorative dots)
+  const holeGeom = new THREE.CylinderGeometry(0.025, 0.025, 0.02, 8)
+  for (let i = 0; i < 4; i++) {
+    const holeL = new THREE.Mesh(holeGeom, soleMaterial)
+    holeL.position.set(-0.05, 0.35 + i * 0.15, 0.36)
+    holeL.rotation.x = Math.PI / 2
+    group.add(holeL)
+
+    const holeR = new THREE.Mesh(holeGeom, soleMaterial)
+    holeR.position.set(0.15, 0.35 + i * 0.15, 0.36)
+    holeR.rotation.x = Math.PI / 2
+    group.add(holeR)
+  }
+
+  // Cross-laces between holes
+  const laceCordMaterial = new THREE.MeshToonMaterial({
+    color: 0xf5deb3,
+    gradientMap
+  })
+  for (let i = 0; i < 3; i++) {
+    const cordGeom = new THREE.CylinderGeometry(0.01, 0.01, 0.22, 4)
+    const cord = new THREE.Mesh(cordGeom, laceCordMaterial)
+    cord.position.set(0.05, 0.42 + i * 0.15, 0.37)
+    cord.rotation.z = Math.PI / 2
+    cord.rotation.x = 0.3
+    group.add(cord)
+  }
+
+  // Heel bump
+  const heelGeom = new THREE.SphereGeometry(0.18, 8, 6)
+  heelGeom.scale(1.0, 0.8, 0.6)
+  const heel = new THREE.Mesh(heelGeom, soleMaterial)
+  heel.position.set(0.55, 0.1, 0)
+  group.add(heel)
+
+  // === WINDOWS ===
+
+  // Round window on toe
+  const toeWindowGeom = new THREE.CircleGeometry(0.08, 10)
+  const toeWindow = new THREE.Mesh(toeWindowGeom, windowMaterial)
+  toeWindow.position.set(-0.58, 0.3, 0)
+  toeWindow.rotation.y = -Math.PI / 2
+  group.add(toeWindow)
+
+  // Window frame
+  const toeFrameGeom = new THREE.TorusGeometry(0.08, 0.015, 4, 16)
+  const toeFrame = new THREE.Mesh(toeFrameGeom, darkLeatherMaterial)
+  toeFrame.position.set(-0.57, 0.3, 0)
+  toeFrame.rotation.y = -Math.PI / 2
+  group.add(toeFrame)
+
+  // Windows on shaft (2 small ones)
+  for (let i = 0; i < 2; i++) {
+    const angle = (i === 0) ? Math.PI * 0.7 : -Math.PI * 0.7
+    const wx = 0.25 + Math.sin(angle) * 0.33
+    const wz = Math.cos(angle) * 0.33
+
+    const shaftWindowGeom = new THREE.PlaneGeometry(0.12, 0.15)
+    const shaftWindow = new THREE.Mesh(shaftWindowGeom, windowMaterial)
+    shaftWindow.position.set(wx, 0.6, wz)
+    shaftWindow.rotation.y = angle + Math.PI
+    group.add(shaftWindow)
+
+    // Frame
+    const frameGeom = new THREE.BoxGeometry(0.14, 0.17, 0.02)
+    const frame = new THREE.Mesh(frameGeom, darkLeatherMaterial)
+    frame.position.set(wx, 0.6, wz)
+    frame.rotation.y = angle + Math.PI
+    group.add(frame)
+  }
+
+  // === BENDY CHIMNEY ===
+
+  const chimneyGroup = new THREE.Group()
+  chimneyGroup.userData.isChimney = true
+
+  // Build a crooked/bendy chimney from segments
+  const segments = [
+    { y: 0, height: 0.15, radius: 0.06, tiltX: 0, tiltZ: 0.15 },
+    { y: 0.14, height: 0.12, radius: 0.055, tiltX: 0.1, tiltZ: -0.2 },
+    { y: 0.25, height: 0.12, radius: 0.05, tiltX: -0.15, tiltZ: 0.25 },
+    { y: 0.36, height: 0.1, radius: 0.045, tiltX: 0.05, tiltZ: -0.1 }
+  ]
+
+  let lastPos = new THREE.Vector3(0, 0, 0)
+  for (const seg of segments) {
+    const segGeom = new THREE.CylinderGeometry(seg.radius * 0.9, seg.radius, seg.height, 6)
+    const segMesh = new THREE.Mesh(segGeom, brickMaterial)
+    segMesh.position.copy(lastPos)
+    segMesh.position.y += seg.height / 2
+    segMesh.rotation.x = seg.tiltX
+    segMesh.rotation.z = seg.tiltZ
+    chimneyGroup.add(segMesh)
+
+    // Track where next segment starts (approximate offset from tilt)
+    lastPos.y += seg.height
+    lastPos.x += Math.sin(seg.tiltZ) * seg.height * 0.5
+    lastPos.z += Math.sin(seg.tiltX) * seg.height * 0.5
+  }
+
+  // Chimney cap
+  const capGeom = new THREE.CylinderGeometry(0.06, 0.04, 0.04, 6)
+  const cap = new THREE.Mesh(capGeom, darkLeatherMaterial)
+  cap.position.copy(lastPos)
+  cap.position.y += 0.02
+  chimneyGroup.add(cap)
+
+  // Smoke puffs
+  const smokeGroup = new THREE.Group()
+  const smokeMaterial = new THREE.MeshBasicMaterial({
+    color: 0xdddddd,
+    transparent: true,
+    opacity: 0.5
+  })
+
+  for (let i = 0; i < 4; i++) {
+    const puffGeom = new THREE.SphereGeometry(0.035, 6, 4)
+    const puff = new THREE.Mesh(puffGeom, smokeMaterial.clone())
+    puff.userData.isSmokePuff = true
+    puff.userData.phase = i * 0.25
+    puff.position.set(
+      lastPos.x + (Math.random() - 0.5) * 0.02,
+      lastPos.y + 0.05,
+      lastPos.z + (Math.random() - 0.5) * 0.02
+    )
+    smokeGroup.add(puff)
+  }
+  chimneyGroup.add(smokeGroup)
+
+  chimneyGroup.position.set(0.1, 1.0, -0.15)
+  group.add(chimneyGroup)
+
+  // === DOOR ===
+
+  const doorGroup = new THREE.Group()
+
+  // Arched door on the toe
+  const doorGeom = new THREE.BoxGeometry(0.15, 0.25, 0.03)
+  const door = new THREE.Mesh(doorGeom, darkLeatherMaterial)
+  door.position.y = 0.125
+  doorGroup.add(door)
+
+  // Door arch
+  const doorArchGeom = new THREE.SphereGeometry(0.075, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)
+  const doorArch = new THREE.Mesh(doorArchGeom, darkLeatherMaterial)
+  doorArch.position.y = 0.25
+  doorArch.rotation.x = Math.PI
+  doorGroup.add(doorArch)
+
+  // Door knob
+  const knobGeom = new THREE.SphereGeometry(0.018, 6, 4)
+  const knobMat = new THREE.MeshToonMaterial({ color: 0xffd700, gradientMap })
+  const knob = new THREE.Mesh(knobGeom, knobMat)
+  knob.position.set(0.05, 0.12, 0.02)
+  doorGroup.add(knob)
+
+  doorGroup.position.set(-0.25, 0.12, 0.35)
+  group.add(doorGroup)
+
+  // === YARD WITH TALL GRASS PATCHES ===
+
+  const yardGroup = new THREE.Group()
+  yardGroup.userData.isYard = true
+
+  // Create grass patches around the boot
+  const grassPositions = [
+    { x: -0.7, z: 0.4, count: 8 },
+    { x: -0.6, z: -0.35, count: 6 },
+    { x: 0.7, z: 0.35, count: 7 },
+    { x: 0.65, z: -0.3, count: 5 },
+    { x: -0.1, z: -0.5, count: 6 },
+    { x: 0.4, z: 0.5, count: 5 }
+  ]
+
+  for (const patch of grassPositions) {
+    for (let i = 0; i < patch.count; i++) {
+      const bladeHeight = 0.12 + Math.random() * 0.15
+      const bladeGeom = new THREE.ConeGeometry(0.015, bladeHeight, 4)
+      const blade = new THREE.Mesh(bladeGeom, grassMaterial)
+
+      const offsetX = (Math.random() - 0.5) * 0.2
+      const offsetZ = (Math.random() - 0.5) * 0.2
+
+      blade.position.set(
+        patch.x + offsetX,
+        bladeHeight / 2,
+        patch.z + offsetZ
+      )
+
+      // Random lean
+      blade.rotation.x = (Math.random() - 0.5) * 0.3
+      blade.rotation.z = (Math.random() - 0.5) * 0.3
+
+      blade.userData.isGrassBlade = true
+      blade.userData.phase = Math.random() * Math.PI * 2
+      blade.userData.baseRotX = blade.rotation.x
+      blade.userData.baseRotZ = blade.rotation.z
+
+      yardGroup.add(blade)
+    }
+  }
+
+  group.add(yardGroup)
+
+  // === TINY SPRITES ===
+
+  const spritesGroup = new THREE.Group()
+  spritesGroup.userData.isSpritesGroup = true
+
+  // Create 4 tiny sprites that will run around
+  for (let i = 0; i < 4; i++) {
+    const sprite = new THREE.Group()
+    sprite.userData.isBootSprite = true
+
+    // Sprite body (small sphere)
+    const bodyGeom = new THREE.SphereGeometry(0.04, 8, 6)
+    const bodyMat = new THREE.MeshToonMaterial({
+      color: spriteColors[i],
+      gradientMap
+    })
+    const body = new THREE.Mesh(bodyGeom, bodyMat)
+    body.position.y = 0.06
+    sprite.add(body)
+
+    // Tiny legs (2 little cylinders)
+    const legGeom = new THREE.CylinderGeometry(0.008, 0.01, 0.04, 4)
+    const legMat = new THREE.MeshToonMaterial({ color: 0x333333, gradientMap })
+
+    const legL = new THREE.Mesh(legGeom, legMat)
+    legL.position.set(-0.02, 0.02, 0)
+    legL.userData.isLeg = true
+    legL.userData.legSide = 'left'
+    sprite.add(legL)
+
+    const legR = new THREE.Mesh(legGeom, legMat)
+    legR.position.set(0.02, 0.02, 0)
+    legR.userData.isLeg = true
+    legR.userData.legSide = 'right'
+    sprite.add(legR)
+
+    // Little eyes (2 white dots)
+    const eyeGeom = new THREE.SphereGeometry(0.012, 6, 4)
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff })
+    const pupilGeom = new THREE.SphereGeometry(0.006, 4, 3)
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 })
+
+    const eyeL = new THREE.Mesh(eyeGeom, eyeMat)
+    eyeL.position.set(-0.015, 0.07, 0.03)
+    sprite.add(eyeL)
+
+    const pupilL = new THREE.Mesh(pupilGeom, pupilMat)
+    pupilL.position.set(-0.015, 0.07, 0.04)
+    sprite.add(pupilL)
+
+    const eyeR = new THREE.Mesh(eyeGeom, eyeMat)
+    eyeR.position.set(0.015, 0.07, 0.03)
+    sprite.add(eyeR)
+
+    const pupilR = new THREE.Mesh(pupilGeom, pupilMat)
+    pupilR.position.set(0.015, 0.07, 0.04)
+    sprite.add(pupilR)
+
+    // Animation data
+    sprite.userData.orbitRadius = 0.5 + Math.random() * 0.3
+    sprite.userData.orbitSpeed = 0.8 + Math.random() * 0.6
+    sprite.userData.orbitPhase = (i / 4) * Math.PI * 2
+    sprite.userData.bobPhase = Math.random() * Math.PI * 2
+    sprite.userData.orbitCenterX = 0.1 // Roughly center of boot
+    sprite.userData.orbitCenterZ = 0
+
+    // Initial position
+    const angle = sprite.userData.orbitPhase
+    sprite.position.set(
+      sprite.userData.orbitCenterX + Math.cos(angle) * sprite.userData.orbitRadius,
+      0,
+      sprite.userData.orbitCenterZ + Math.sin(angle) * sprite.userData.orbitRadius
+    )
+
+    spritesGroup.add(sprite)
+  }
+
+  group.add(spritesGroup)
+
+  // Mark for building identification
+  group.userData.isBootHouse = true
+
+  return group
+}
+
 // Factory function to create building by type
 export function createBuilding(type, gradientMap) {
   switch (type) {
@@ -543,6 +918,8 @@ export function createBuilding(type, gradientMap) {
       return createFence(gradientMap)
     case 'onion_house':
       return createOnionHouse(gradientMap)
+    case 'boot_house':
+      return createBootHouse(gradientMap)
     default:
       console.warn('Unknown building type:', type)
       return new THREE.Group()
