@@ -35,7 +35,7 @@ case "$DISTRO" in
         echo "▶ fix selinux context"
         sudo restorecon -Rv "$SITE/releases/$STAMP"
         ;;
-    arch|manjaro|endeavouros)
+    nixos|arch|manjaro|endeavouros)
         echo "▶ skipping selinux (not used on $DISTRO)"
         ;;
     *)
